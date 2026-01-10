@@ -1,1 +1,52 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <title>CRM Ronny Vegas • Login</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+
+  <div class="login-box">
+    <h1>CRM Equipe Ronny</h1>
+    <p class="muted">Módulo: Credenciamento Vegas</p>
+
+    <input id="email" type="email" placeholder="E-mail">
+    <input id="password" type="password" placeholder="Senha">
+
+    <button id="btnLogin">Entrar</button>
+
+    <p class="small muted" style="margin-top:12px">
+      Se der ruim: confere Supabase URL/Key no <b>assets/supabaseClient.js</b>
+    </p>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script type="module">
+    import { sb } from "./assets/supabaseClient.js";
+    import { toast } from "./assets/app.js";
+
+    document.getElementById("btnLogin").onclick = async () => {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      if(!email || !password){
+        toast("Preenche e-mail e senha 😅");
+        return;
+      }
+
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        console.error(error);
+        toast("Login inválido ou usuário sem acesso.");
+      } else {
+        location.href = "dashboard.html";
+      }
+    };
+  </script>
+</body>
+</html>
 
