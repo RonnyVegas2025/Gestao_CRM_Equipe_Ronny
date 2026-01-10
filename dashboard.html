@@ -2,216 +2,228 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8">
-  <title>CRM • Dashboard</title>
+  <title>Dashboard • Credenciamento</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
-  <div class="wrap">
-    <header class="topbar">
-      <div>
-        <h1 style="margin:0">Credenciamento • Dashboard</h1>
-        <div id="me" class="muted" style="margin-top:6px">Carregando…</div>
+
+  <header class="top">
+    <div>
+      <h1>Credenciamento • Dashboard</h1>
+      <div class="muted" id="who">Carregando…</div>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:center">
+      <a id="btnAdm" class="btn-ghost" href="adm_demandas.html" style="display:none">Demandas (ADM)</a>
+      <button id="btnLogout" class="btn-ghost">Sair</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <section class="card">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h2 style="margin:0">📌 Pendências (Demandas)</h2>
       </div>
+      <div id="demandas" class="list">Carregando…</div>
+    </section>
 
-      <div class="actions" style="display:flex;gap:10px;align-items:center">
-        <a class="btn" href="negociacao.html">+ Nova negociação</a>
-        <a class="btn" id="btnAdm" href="adm_demandas.html" style="display:none">ADM • Demandas</a>
-        <button class="btn" id="btnLogout">Sair</button>
+    <section class="card">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h2 style="margin:0">📋 Minhas negociações</h2>
+        <button id="btnNova" class="btn">+ Nova negociação</button>
       </div>
-    </header>
+      <div id="negociacoes" class="list">Carregando…</div>
+    </section>
 
-    <main style="margin-top:18px;display:grid;gap:16px;max-width:1100px">
-      <section class="card">
-        <h2 style="margin:0 0 10px 0">📌 Pendências (Demandas)</h2>
-        <div id="demandasEmpty" class="muted">Carregando…</div>
-        <div id="demandasList" style="display:grid;gap:10px"></div>
-      </section>
-
-      <section class="card">
-        <h2 style="margin:0 0 10px 0">📋 Minhas negociações</h2>
-        <div id="negEmpty" class="muted">Carregando…</div>
-        <div id="negList" style="display:grid;gap:10px"></div>
-      </section>
-    </main>
-  </div>
+  </main>
 
   <div class="toast" id="toast"></div>
 
   <script type="module">
     import { sb } from "./assets/supabaseClient.js";
-    import { ensureProfile, logout, toast, humanError } from "./assets/app.js";
+    import { getProfile, logout, toast, isAdminRole } from "./assets/app.js";
 
-    const me = document.getElementById("me");
-    const btnLogout = document.getElementById("btnLogout");
-    const btnAdm = document.getElementById("btnAdm");
+    const demandasEl = document.getElementById("demandas");
+    const negEl = document.getElementById("negociacoes");
 
-    const demandasEmpty = document.getElementById("demandasEmpty");
-    const demandasList = document.getElementById("demandasList");
+    function badge(status){
+      return `<span class="badge">${status}</span>`;
+    }
 
-    const negEmpty = document.getElementById("negEmpty");
-    const negList = document.getElementById("negList");
-
-    btnLogout.addEventListener("click", logout);
-
-    function cardHTML(title, meta, actionsHTML) {
+    function demandaHTML(d){
+      const local = d.cidade ? `${d.cidade}${d.uf ? " / "+d.uf : ""}` : "—";
       return `
-        <div class="row-card" style="padding:12px;border-radius:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
-          <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
-            <div>
-              <div style="font-weight:700">${title}</div>
-              <div class="muted" style="margin-top:4px">${meta || ""}</div>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap">${actionsHTML || ""}</div>
+        <div class="item">
+          <div class="row">
+            <b>${d.nome_comercio}</b>
+            ${badge(d.status)}
+          </div>
+          <div class="muted">
+            ${d.segmento || "—"} • ${d.telefone || "—"}<br>
+            ${local}
+          </div>
+          ${d.observacao ? `<div class="small" style="margin-top:6px">${d.observacao}</div>` : ""}
+          <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+            ${
+              d.status === "pendente"
+              ? `<button class="btn" data-aceitar="${d.id}">Aceitar e virar negociação</button>`
+              : (d.negociacao_id
+                 ? `<a class="btn" href="negociacao.html?id=${d.negociacao_id}">Abrir negociação</a>`
+                 : `<button class="btn" disabled>Sem negociação vinculada</button>`
+                )
+            }
           </div>
         </div>
       `;
     }
 
-    async function load() {
-      const ctx = await ensureProfile();
-      const { user, prof } = ctx;
+    function negHTML(n){
+      const local = n.cidade ? `${n.cidade}${n.uf ? " / "+n.uf : ""}` : "—";
+      return `
+        <div class="item">
+          <div class="row">
+            <b>${n.nome_comercio}</b>
+            ${badge(n.status)}
+          </div>
+          <div class="muted">
+            ${n.segmento || "—"} • ${n.telefone || "—"}<br>
+            ${local}
+          </div>
+          <div style="margin-top:10px">
+            <a class="btn" href="negociacao.html?id=${n.id}">Abrir</a>
+          </div>
+        </div>
+      `;
+    }
 
-      me.textContent = `${user.email} • ${prof.papel}`;
-
-      if (prof.papel === "adm" || prof.papel === "gestor") {
-        btnAdm.style.display = "inline-flex";
-      }
-
-      // -------------------------
-      // DEMANDAS (pendências)
-      // -------------------------
-      const { data: demandas, error: demErr } = await sb
+    async function loadDemandas(user){
+      const { data, error } = await sb
         .from("demandas_credenciamento")
-        .select("id,status,nome_comercio,segmento,telefone,uf,cidade,observacao,created_at,negociacao_id")
-        .order("created_at", { ascending: false });
+        .select("id,nome_comercio,segmento,telefone,observacao,uf,cidade,status,created_at,negociacao_id")
+        .eq("assigned_to", user.id)
+        .order("created_at", { ascending: true });
 
-      if (demErr) {
-        console.error(demErr);
-        demandasEmpty.textContent = "Não consegui carregar demandas.";
+      if (error) throw error;
+
+      const pend = (data || []).filter(x => x.status !== "cancelada" && x.status !== "concluida");
+
+      if (!pend.length) {
+        demandasEl.innerHTML = `<div class="muted"><i>Sem pendências 🎉</i></div>`;
       } else {
-        const pend = (demandas || []).filter(d => d.status === "pendente" || d.status === "aceita");
-
-        if (!pend.length) {
-          demandasEmpty.textContent = "Sem pendências 🎉";
-          demandasList.innerHTML = "";
-        } else {
-          demandasEmpty.style.display = "none";
-          demandasList.innerHTML = pend.map(d => {
-            const meta = [
-              d.segmento ? `Segmento: ${d.segmento}` : null,
-              d.telefone ? `Tel: ${d.telefone}` : null,
-              (d.cidade || d.uf) ? `Local: ${(d.cidade||"")}${d.cidade && d.uf ? " / " : ""}${(d.uf||"")}` : null,
-              d.observacao ? `Obs: ${d.observacao}` : null,
-              `Status: ${d.status}`
-            ].filter(Boolean).join(" • ");
-
-            const actions = `
-              ${d.negociacao_id
-                ? `<a class="btn" href="negociacao.html?id=${d.negociacao_id}">Abrir negociação</a>`
-                : `<button class="btn" data-aceitar="${d.id}">Aceitar e virar negociação</button>`
-              }
-            `;
-            return cardHTML(d.nome_comercio, meta, actions);
-          }).join("");
-
-          // bind buttons aceitar
-          document.querySelectorAll("[data-aceitar]").forEach(btn => {
-            btn.addEventListener("click", async () => {
-              const demandaId = btn.getAttribute("data-aceitar");
-              btn.disabled = true;
-              btn.textContent = "Criando…";
-
-              try {
-                // 1) pega a demanda
-                const { data: demOne, error: e1 } = await sb
-                  .from("demandas_credenciamento")
-                  .select("*")
-                  .eq("id", demandaId)
-                  .single();
-
-                if (e1) throw e1;
-
-                // 2) cria negociação
-                const payload = {
-                  created_by: user.id,
-                  assigned_to: user.id,
-                  status: "em_negociacao",
-                  nome_comercio: demOne.nome_comercio,
-                  segmento: demOne.segmento,
-                  telefone: demOne.telefone,
-                  contato_nome: demOne.contato_nome,
-                  contato_email: demOne.contato_email,
-                  uf: demOne.uf,
-                  cidade: demOne.cidade,
-                  observacao: demOne.observacao
-                };
-
-                const { data: neg, error: e2 } = await sb
-                  .from("negociacoes")
-                  .insert(payload)
-                  .select("id")
-                  .single();
-
-                if (e2) throw e2;
-
-                // 3) atualiza demanda -> aceita + link negociacao_id
-                const { error: e3 } = await sb
-                  .from("demandas_credenciamento")
-                  .update({ status: "aceita", negociacao_id: neg.id })
-                  .eq("id", demandaId);
-
-                if (e3) throw e3;
-
-                toast("Demanda aceita e virou negociação ✅");
-                location.href = `negociacao.html?id=${neg.id}`;
-              } catch (err) {
-                console.error(err);
-                toast(humanError(err));
-                btn.disabled = false;
-                btn.textContent = "Aceitar e virar negociação";
-              }
-            });
-          });
-        }
-      }
-
-      // -------------------------
-      // NEGOCIAÇÕES
-      // -------------------------
-      const { data: negs, error: negErr } = await sb
-        .from("negociacoes")
-        .select("id,status,nome_comercio,segmento,telefone,uf,cidade,updated_at")
-        .order("updated_at", { ascending: false });
-
-      if (negErr) {
-        console.error(negErr);
-        negEmpty.textContent = "Não consegui carregar negociações.";
-      } else {
-        if (!negs || !negs.length) {
-          negEmpty.textContent = "Nenhuma negociação ainda. Clique em “+ Nova negociação”.";
-          negList.innerHTML = "";
-        } else {
-          negEmpty.style.display = "none";
-          negList.innerHTML = negs.map(n => {
-            const meta = [
-              n.status ? `Status: ${n.status}` : null,
-              n.segmento ? `Segmento: ${n.segmento}` : null,
-              n.telefone ? `Tel: ${n.telefone}` : null,
-              (n.cidade || n.uf) ? `Local: ${(n.cidade||"")}${n.cidade && n.uf ? " / " : ""}${(n.uf||"")}` : null,
-            ].filter(Boolean).join(" • ");
-
-            const actions = `<a class="btn" href="negociacao.html?id=${n.id}">Abrir</a>`;
-            return cardHTML(n.nome_comercio, meta, actions);
-          }).join("");
-        }
+        demandasEl.innerHTML = pend.map(demandaHTML).join("");
       }
     }
 
-    load().catch(err => {
+    async function loadNegociacoes(user){
+      const { data, error } = await sb
+        .from("negociacoes")
+        .select("id,nome_comercio,segmento,telefone,uf,cidade,status,created_at")
+        .eq("assigned_to", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      if (!(data || []).length) {
+        negEl.innerHTML = `<div class="muted"><i>Nenhuma negociação ainda. Clique em “+ Nova negociação”.</i></div>`;
+      } else {
+        negEl.innerHTML = data.map(negHTML).join("");
+      }
+    }
+
+    async function aceitarDemanda(user, demandaId){
+      // pega demanda
+      const { data: d, error: e1 } = await sb
+        .from("demandas_credenciamento")
+        .select("*")
+        .eq("id", demandaId)
+        .single();
+
+      if (e1) throw e1;
+
+      // cria negociação copiando o básico
+      const payload = {
+        created_by: user.id,
+        assigned_to: user.id,
+        status: "em_negociacao",
+        nome_comercio: d.nome_comercio,
+        segmento: d.segmento,
+        telefone: d.telefone,
+        contato_nome: d.contato_nome,
+        contato_email: d.contato_email,
+        uf: d.uf,
+        cidade: d.cidade,
+        observacao: d.observacao
+      };
+
+      const { data: nIns, error: e2 } = await sb
+        .from("negociacoes")
+        .insert(payload)
+        .select("id")
+        .single();
+
+      if (e2) throw e2;
+
+      // atualiza demanda
+      const { error: e3 } = await sb
+        .from("demandas_credenciamento")
+        .update({ status: "aceita", negociacao_id: nIns.id })
+        .eq("id", demandaId);
+
+      if (e3) throw e3;
+
+      // cria log inicial
+      await sb.from("action_logs").insert({
+        negociacao_id: nIns.id,
+        created_by: user.id,
+        tipo: "sistema",
+        titulo: "Negociação criada a partir de demanda",
+        descricao: "Demanda aceita e convertida para negociação."
+      });
+
+      toast("Demanda aceita! Abrindo negociação…");
+      setTimeout(()=> location.href = `negociacao.html?id=${nIns.id}`, 600);
+    }
+
+    try {
+      const { user, profile } = await getProfile();
+
+      document.getElementById("who").textContent = `${user.email} • ${profile.role}`;
+      document.getElementById("btnLogout").onclick = logout;
+
+      if (isAdminRole(profile.role)) {
+        document.getElementById("btnAdm").style.display = "inline-flex";
+      }
+
+      document.getElementById("btnNova").onclick = () => {
+        location.href = "negociacao.html";
+      };
+
+      await loadDemandas(user);
+      await loadNegociacoes(user);
+
+      // delegação de clique
+      document.addEventListener("click", async (ev) => {
+        const btn = ev.target.closest("[data-aceitar]");
+        if (!btn) return;
+        const id = btn.getAttribute("data-aceitar");
+        btn.disabled = true;
+        btn.textContent = "Aceitando…";
+        try {
+          await aceitarDemanda(user, id);
+        } catch (err) {
+          console.error(err);
+          toast("Não consegui aceitar a demanda. Veja o console (F12).");
+          btn.disabled = false;
+          btn.textContent = "Aceitar e virar negociação";
+        }
+      });
+
+    } catch (err) {
       console.error(err);
-      toast("Falha ao carregar. Veja o console (F12).");
-    });
+      toast("Erro ao carregar dashboard. Veja o console (F12).");
+    }
   </script>
 </body>
 </html>
