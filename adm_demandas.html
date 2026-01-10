@@ -1,1 +1,184 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <title>ADM • Demandas</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
+      <div>
+        <h1 style="margin:0">ADM • Demandas de Credenciamento</h1>
+        <div id="subtitle" class="muted">Carregando…</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <a class="btn" href="dashboard.html">← Voltar</a>
+      </div>
+    </header>
+
+    <main style="margin-top:18px;display:grid;gap:16px;max-width:1100px">
+      <section class="card">
+        <h2 style="margin:0 0 10px 0">Criar nova demanda</h2>
+
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+          <select id="assigned_to"></select>
+          <input id="nome_comercio" placeholder="Nome do comércio *">
+
+          <input id="segmento" placeholder="Segmento">
+          <input id="telefone" placeholder="Telefone">
+
+          <input id="contato_nome" placeholder="Nome do contato">
+          <input id="contato_email" placeholder="E-mail do contato">
+
+          <input id="uf" placeholder="UF (ex: SP)" maxlength="2">
+          <input id="cidade" placeholder="Cidade">
+        </div>
+
+        <div style="margin-top:10px">
+          <textarea id="observacao" rows="3" placeholder="Observações / argumentos / contexto pro vendedor"></textarea>
+        </div>
+
+        <div style="margin-top:10px">
+          <button class="btn" id="btnCreate">Criar demanda</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 style="margin:0 0 10px 0">Acompanhar demandas</h2>
+        <div id="listEmpty" class="muted">Carregando…</div>
+        <div id="list" style="display:grid;gap:10px"></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script type="module">
+    import { sb } from "./assets/supabaseClient.js";
+    import { ensureProfile, toast, humanError } from "./assets/app.js";
+
+    const subtitle = document.getElementById("subtitle");
+    const assignedTo = document.getElementById("assigned_to");
+    const btnCreate = document.getElementById("btnCreate");
+
+    const listEmpty = document.getElementById("listEmpty");
+    const list = document.getElementById("list");
+
+    const f = (id) => document.getElementById(id);
+
+    let user, prof;
+
+    function rowCard(title, meta) {
+      return `
+        <div style="padding:12px;border-radius:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+          <div style="font-weight:800">${title}</div>
+          <div class="muted" style="margin-top:6px">${meta}</div>
+        </div>
+      `;
+    }
+
+    async function loadVendedores() {
+      const { data, error } = await sb
+        .from("profiles2")
+        .select("id,nome,papel")
+        .order("nome", { ascending: true });
+
+      if (error) throw error;
+
+      const vendedores = (data || []).filter(p => p.papel === "vendedor");
+      assignedTo.innerHTML = vendedores.map(v => `<option value="${v.id}">${v.nome || v.id}</option>`).join("");
+    }
+
+    async function loadDemandas() {
+      listEmpty.textContent = "Carregando…";
+      list.innerHTML = "";
+
+      const { data, error } = await sb
+        .from("demandas_credenciamento")
+        .select("id,status,nome_comercio,segmento,telefone,cidade,uf,observacao,created_at,assigned_to,negociacao_id")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      if (!data || !data.length) {
+        listEmpty.textContent = "Nenhuma demanda criada ainda.";
+        return;
+      }
+
+      listEmpty.style.display = "none";
+      list.innerHTML = data.map(d => {
+        const dt = new Date(d.created_at).toLocaleString("pt-BR");
+        const meta = [
+          `Status: ${d.status}`,
+          d.segmento ? `Segmento: ${d.segmento}` : null,
+          d.telefone ? `Tel: ${d.telefone}` : null,
+          (d.cidade || d.uf) ? `Local: ${(d.cidade||"")}${d.cidade && d.uf ? " / " : ""}${(d.uf||"")}` : null,
+          d.observacao ? `Obs: ${d.observacao}` : null,
+          `Criado: ${dt}`,
+          d.negociacao_id ? `Negociação: ${d.negociacao_id}` : null
+        ].filter(Boolean).join(" • ");
+
+        return rowCard(d.nome_comercio, meta);
+      }).join("");
+    }
+
+    btnCreate.addEventListener("click", async () => {
+      try {
+        const payload = {
+          created_by: user.id,
+          assigned_to: assignedTo.value,
+          status: "pendente",
+          nome_comercio: f("nome_comercio").value.trim(),
+          segmento: f("segmento").value.trim() || null,
+          telefone: f("telefone").value.trim() || null,
+          contato_nome: f("contato_nome").value.trim() || null,
+          contato_email: f("contato_email").value.trim() || null,
+          uf: (f("uf").value.trim() || "").toUpperCase() || null,
+          cidade: f("cidade").value.trim() || null,
+          observacao: f("observacao").value.trim() || null
+        };
+
+        if (!payload.nome_comercio) {
+          toast("Preencha o nome do comércio.");
+          return;
+        }
+
+        const { error } = await sb.from("demandas_credenciamento").insert(payload);
+        if (error) throw error;
+
+        // limpa campos
+        ["nome_comercio","segmento","telefone","contato_nome","contato_email","uf","cidade","observacao"]
+          .forEach(id => f(id).value = "");
+
+        toast("Demanda criada ✅");
+        await loadDemandas();
+      } catch (err) {
+        console.error(err);
+        toast(humanError(err));
+      }
+    });
+
+    (async function init(){
+      const ctx = await ensureProfile();
+      user = ctx.user;
+      prof = ctx.prof;
+
+      if (!(prof.papel === "adm" || prof.papel === "gestor")) {
+        subtitle.textContent = "Acesso negado. Apenas ADM/Gestor.";
+        toast("Acesso negado.");
+        return;
+      }
+
+      subtitle.textContent = `${user.email} • ${prof.papel}`;
+      await loadVendedores();
+      await loadDemandas();
+    })().catch(err => {
+      console.error(err);
+      toast("Falha ao carregar. Veja o console (F12).");
+    });
+  </script>
+</body>
+</html>
 
