@@ -10,15 +10,16 @@
 
   <div class="login-box">
     <h1>Nova senha</h1>
-    <p class="muted">Crie uma senha nova pra sua conta.</p>
+    <p class="muted" id="msg">Validando link…</p>
 
-    <input id="newpass" type="password" placeholder="Nova senha (mín. 6)">
-    <input id="newpass2" type="password" placeholder="Confirmar nova senha">
-
-    <button id="btnSave">Salvar nova senha</button>
+    <div id="form" style="display:none">
+      <input id="newpass" type="password" placeholder="Nova senha (mín. 6)">
+      <input id="newpass2" type="password" placeholder="Confirmar nova senha">
+      <button id="btnSave">Salvar nova senha</button>
+    </div>
 
     <p class="small muted" style="margin-top:12px">
-      Se cair aqui sem token, peça “esqueci minha senha” de novo.
+      Se cair aqui e voltar pro login, peça “esqueci minha senha” de novo.
     </p>
   </div>
 
@@ -28,39 +29,57 @@
     import { sb } from "./assets/supabaseClient.js";
     import { toast } from "./assets/app.js";
 
-    // IMPORTANTE:
-    // Quando você clica no link do e-mail, o Supabase redireciona para:
-    // reset.html#access_token=...&refresh_token=...&type=recovery
-    // Precisamos capturar isso e "setar" a sessão no navegador.
+    const msgEl = document.getElementById("msg");
+    const formEl = document.getElementById("form");
 
-    async function initRecoverySession() {
+    async function init() {
+      // 1) Se o link vier com ?code=..., troca por sessão (modo recomendado Supabase)
+      const url = new URL(location.href);
+      const code = url.searchParams.get("code");
+
+      if (code) {
+        const { error } = await sb.auth.exchangeCodeForSession(code);
+        if (error) {
+          console.error(error);
+          toast("Link inválido/expirado. Solicite novamente.");
+          msgEl.textContent = "Link inválido/expirado.";
+          setTimeout(() => (location.href = "index.html"), 2000);
+          return false;
+        }
+        return true;
+      }
+
+      // 2) Se o link vier com #access_token=...&refresh_token=... (modo antigo)
       const hash = location.hash || "";
       const params = new URLSearchParams(hash.replace("#", ""));
-
       const access_token = params.get("access_token");
       const refresh_token = params.get("refresh_token");
       const type = params.get("type");
 
-      if (!access_token || !refresh_token || type !== "recovery") {
-        // Sem token, manda pro login
-        toast("Link inválido ou expirado. Solicite novamente.");
-        setTimeout(() => (location.href = "index.html"), 2000);
-        return false;
+      if (access_token && refresh_token && (type === "recovery" || type === "signup")) {
+        const { error } = await sb.auth.setSession({ access_token, refresh_token });
+        if (error) {
+          console.error(error);
+          toast("Não consegui validar o link. Solicite novamente.");
+          msgEl.textContent = "Não consegui validar o link.";
+          setTimeout(() => (location.href = "index.html"), 2000);
+          return false;
+        }
+        return true;
       }
 
-      const { error } = await sb.auth.setSession({ access_token, refresh_token });
-      if (error) {
-        console.error(error);
-        toast("Não consegui validar o link. Solicite novamente.");
-        setTimeout(() => (location.href = "index.html"), 2500);
-        return false;
-      }
-
-      return true;
+      // 3) Se não tem code nem token, não é link de reset válido
+      toast("Link inválido/expirado. Solicite novamente.");
+      msgEl.textContent = "Link inválido/expirado.";
+      setTimeout(() => (location.href = "index.html"), 1800);
+      return false;
     }
 
-    const ok = await initRecoverySession();
-    if (!ok) throw new Error("recovery_session_failed");
+    const ok = await init();
+    if (!ok) throw new Error("recovery_init_failed");
+
+    msgEl.textContent = "Pronto! Agora crie sua nova senha.";
+    formEl.style.display = "block";
 
     document.getElementById("btnSave").onclick = async () => {
       const p1 = document.getElementById("newpass").value;
@@ -88,4 +107,3 @@
   </script>
 </body>
 </html>
-
