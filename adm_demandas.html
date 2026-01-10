@@ -1,81 +1,102 @@
 <!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8">
-  <title>Demandas • ADM</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link rel="stylesheet" href="assets/app.css">
+  <meta charset="utf-8" />
+  <title>ADM • Demandas • Credenciamento</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="assets/app.css" />
 </head>
 <body>
 
   <header class="top">
     <div>
-      <h1>Demandas • Administração</h1>
+      <h1>ADM • Demandas (Credenciamento)</h1>
       <div class="muted" id="who">Carregando…</div>
     </div>
 
-    <div style="display:flex;gap:10px;align-items:center">
+    <div class="row" style="gap:10px">
       <a class="btn-ghost" href="dashboard.html">Voltar</a>
       <button id="btnLogout" class="btn-ghost">Sair</button>
     </div>
   </header>
 
-  <main class="wrap" style="display:grid;gap:16px;grid-template-columns: 1fr 1fr; align-items:start">
+  <main class="wrap">
 
     <section class="card">
-      <h2>➕ Criar demanda</h2>
+      <h2>➕ Nova demanda</h2>
 
-      <div class="grid2">
+      <div class="grid" style="grid-template-columns: 1fr 1fr; gap:12px">
         <div>
-          <label class="lbl">Vendedor</label>
-          <select id="assigned_to"></select>
-        </div>
-        <div>
-          <label class="lbl">Nome do comércio</label>
-          <input id="nome_comercio" placeholder="Ex: Mercado Central">
+          <label class="muted small">Vendedor responsável</label>
+          <select id="assignedTo">
+            <option value="">Carregando vendedores…</option>
+          </select>
         </div>
 
         <div>
-          <label class="lbl">Segmento</label>
-          <input id="segmento" placeholder="Ex: Mercado / Farmácia">
-        </div>
-        <div>
-          <label class="lbl">Telefone</label>
-          <input id="telefone" placeholder="(xx) xxxxx-xxxx">
+          <label class="muted small">Telefone</label>
+          <input id="telefone" placeholder="(xx) xxxxx-xxxx" />
         </div>
 
         <div>
-          <label class="lbl">Contato</label>
-          <input id="contato_nome" placeholder="Nome do responsável">
-        </div>
-        <div>
-          <label class="lbl">E-mail do contato</label>
-          <input id="contato_email" placeholder="email@comercio.com">
+          <label class="muted small">Nome do comércio *</label>
+          <input id="nomeComercio" placeholder="Ex: Padaria do Zé" />
         </div>
 
         <div>
-          <label class="lbl">UF</label>
-          <input id="uf" placeholder="SP" maxlength="2">
+          <label class="muted small">Segmento</label>
+          <input id="segmento" placeholder="Ex: Alimentação / Mercado / Farmácia" />
         </div>
+
         <div>
-          <label class="lbl">Cidade</label>
-          <input id="cidade" placeholder="Americana">
+          <label class="muted small">UF</label>
+          <input id="uf" maxlength="2" placeholder="SP" />
+        </div>
+
+        <div>
+          <label class="muted small">Cidade</label>
+          <input id="cidade" placeholder="Americana" />
+        </div>
+
+        <div>
+          <label class="muted small">Contato (nome)</label>
+          <input id="contatoNome" placeholder="Ex: Marcos" />
+        </div>
+
+        <div>
+          <label class="muted small">Contato (e-mail)</label>
+          <input id="contatoEmail" type="email" placeholder="ex@empresa.com" />
         </div>
       </div>
 
-      <div style="margin-top:10px">
-        <label class="lbl">Observação (argumentos/infos pro vendedor)</label>
-        <textarea id="observacao" rows="4" placeholder="Ex: Indicação da Pós-venda, cliente quer retorno hoje…"></textarea>
+      <div style="margin-top:12px">
+        <label class="muted small">Observação / Argumentos</label>
+        <textarea id="observacao" rows="4" placeholder="Contexto da indicação, argumentos, quem pediu, urgência etc."></textarea>
       </div>
 
-      <div style="margin-top:14px">
-        <button id="btnCriar" class="btn">Criar demanda</button>
+      <div class="row" style="margin-top:12px; gap:10px; justify-content:flex-end">
+        <button class="btn" id="btnCreate">Criar demanda</button>
       </div>
+
+      <div class="muted small" id="createInfo" style="margin-top:10px"></div>
     </section>
 
     <section class="card">
-      <h2>📌 Acompanhamento</h2>
-      <div id="lista" class="list">Carregando…</div>
+      <h2>📌 Demandas criadas</h2>
+
+      <div class="row" style="gap:10px; flex-wrap:wrap; align-items:center">
+        <select id="filterStatus">
+          <option value="todos">Todos</option>
+          <option value="pendente">Pendente</option>
+          <option value="aceita">Aceita</option>
+          <option value="concluida">Concluída</option>
+          <option value="cancelada">Cancelada</option>
+        </select>
+
+        <button class="btn-ghost" id="btnReload">Atualizar</button>
+      </div>
+
+      <div id="lista" class="list" style="margin-top:12px">Carregando…</div>
     </section>
 
   </main>
@@ -86,136 +107,233 @@
     import { sb } from "./assets/supabaseClient.js";
     import { getProfile, logout, toast, isAdminPapel } from "./assets/app.js";
 
-    const selV = document.getElementById("assigned_to");
-    const lista = document.getElementById("lista");
+    const whoEl = document.getElementById("who");
+    const btnLogout = document.getElementById("btnLogout");
 
-    function itemHTML(d){
-      const local = d.cidade ? `${d.cidade}${d.uf ? " / "+d.uf : ""}` : "—";
+    const assignedToEl = document.getElementById("assignedTo");
+    const nomeComercioEl = document.getElementById("nomeComercio");
+    const segmentoEl = document.getElementById("segmento");
+    const telefoneEl = document.getElementById("telefone");
+    const contatoNomeEl = document.getElementById("contatoNome");
+    const contatoEmailEl = document.getElementById("contatoEmail");
+    const ufEl = document.getElementById("uf");
+    const cidadeEl = document.getElementById("cidade");
+    const observacaoEl = document.getElementById("observacao");
+    const btnCreate = document.getElementById("btnCreate");
+    const createInfo = document.getElementById("createInfo");
+
+    const filterStatusEl = document.getElementById("filterStatus");
+    const btnReload = document.getElementById("btnReload");
+    const listaEl = document.getElementById("lista");
+
+    let me = null;
+
+    function optUser(p){
+      const shortId = String(p.id).slice(0, 8);
+      return `<option value="${p.id}">${p.nome || "Sem nome"} • ${p.papel} • ${shortId}</option>`;
+    }
+
+    function badge(status){
+      return `<span class="badge">${status}</span>`;
+    }
+
+    function itemHTML(d, vendedoresMap){
+      const vend = vendedoresMap.get(d.assigned_to);
+      const vendTxt = vend ? `${vend.nome} (${vend.papel})` : String(d.assigned_to).slice(0,8);
+
       return `
         <div class="item">
           <div class="row">
             <b>${d.nome_comercio}</b>
-            <span class="badge">${d.status}</span>
+            ${badge(d.status)}
           </div>
+
           <div class="muted">
-            ${d.vendedor_nome || "—"}<br>
-            ${d.segmento || "—"} • ${d.telefone || "—"} • ${local}
+            Resp: <b>${vendTxt}</b><br>
+            ${d.segmento || "—"} • ${d.telefone || "—"}<br>
+            ${d.cidade ? (d.cidade + " / " + (d.uf||"")) : ""}
           </div>
-          ${d.observacao ? `<div class="small" style="margin-top:6px">${d.observacao}</div>` : ""}
-          ${d.negociacao_id ? `<div class="small muted" style="margin-top:8px">Negociação: ${d.negociacao_id}</div>` : ""}
+
+          ${d.observacao ? `<div class="small" style="margin-top:8px">${d.observacao}</div>` : ""}
+
+          <div class="row" style="margin-top:10px; gap:10px; flex-wrap:wrap">
+            <button class="btn-ghost" data-act="copy" data-id="${d.id}">Copiar ID</button>
+
+            <select data-act="status" data-id="${d.id}">
+              <option value="pendente" ${d.status==="pendente"?"selected":""}>pendente</option>
+              <option value="aceita" ${d.status==="aceita"?"selected":""}>aceita</option>
+              <option value="concluida" ${d.status==="concluida"?"selected":""}>concluida</option>
+              <option value="cancelada" ${d.status==="cancelada"?"selected":""}>cancelada</option>
+            </select>
+          </div>
+
+          <div class="muted small" style="margin-top:8px">
+            Criada em: ${new Date(d.created_at).toLocaleString("pt-BR")}
+          </div>
         </div>
       `;
     }
 
     async function loadVendedores(){
+      // vendedores = profiles2.papel == 'vendedor'
       const { data, error } = await sb
         .from("profiles2")
         .select("id,nome,papel")
+        .eq("papel", "vendedor")
         .order("nome", { ascending: true });
 
       if (error) throw error;
 
-      const vend = (data || []).filter(p => (p.papel || "").toLowerCase() === "vendedor");
-
-      selV.innerHTML = vend.map(v => `<option value="${v.id}">${v.nome || v.id}</option>`).join("");
-      if (!vend.length) {
-        selV.innerHTML = `<option value="">Nenhum vendedor cadastrado em profiles2</option>`;
+      const arr = data || [];
+      if(!arr.length){
+        assignedToEl.innerHTML = `<option value="">Nenhum vendedor cadastrado em profiles2</option>`;
+        return { list: [], map: new Map() };
       }
+
+      assignedToEl.innerHTML = `<option value="">Selecione…</option>` + arr.map(optUser).join("");
+      return { list: arr, map: new Map(arr.map(x => [x.id, x])) };
     }
 
-    async function loadDemandas(){
-      const { data, error } = await sb
-        .from("demandas_credenciamento")
-        .select("id,nome_comercio,segmento,telefone,observacao,uf,cidade,status,created_at,assigned_to,negociacao_id")
-        .order("created_at", { ascending: false });
+    async function createDemanda(){
+      createInfo.textContent = "";
+      const assigned_to = assignedToEl.value;
+      const nome_comercio = nomeComercioEl.value.trim();
 
-      if (error) throw error;
-
-      if (!(data||[]).length){
-        lista.innerHTML = `<div class="muted"><i>Nenhuma demanda criada ainda.</i></div>`;
+      if(!assigned_to){
+        toast("Escolhe o vendedor responsável 🙂");
+        return;
+      }
+      if(!nome_comercio){
+        toast("Nome do comércio é obrigatório 😅");
         return;
       }
 
-      // buscar nomes dos vendedores
-      const ids = [...new Set(data.map(x => x.assigned_to))].filter(Boolean);
-      const { data: ps } = await sb.from("profiles2").select("id,nome").in("id", ids);
-
-      const map = new Map((ps||[]).map(p => [p.id, p.nome]));
-      const withNames = data.map(d => ({...d, vendedor_nome: map.get(d.assigned_to) || "—"}));
-
-      lista.innerHTML = withNames.map(itemHTML).join("");
-    }
-
-    function getForm(){
-      const uf = (document.getElementById("uf").value || "").trim().toUpperCase().slice(0,2);
-      return {
-        assigned_to: selV.value,
-        nome_comercio: (document.getElementById("nome_comercio").value||"").trim(),
-        segmento: (document.getElementById("segmento").value||"").trim(),
-        telefone: (document.getElementById("telefone").value||"").trim(),
-        contato_nome: (document.getElementById("contato_nome").value||"").trim(),
-        contato_email: (document.getElementById("contato_email").value||"").trim(),
-        uf,
-        cidade: (document.getElementById("cidade").value||"").trim(),
-        observacao: (document.getElementById("observacao").value||"").trim(),
-      };
-    }
-
-    async function createDemanda(user){
-      const f = getForm();
-      if(!f.assigned_to){
-        toast("Selecione um vendedor.");
-        return;
-      }
-      if(!f.nome_comercio){
-        toast("Informe o nome do comércio.");
-        return;
-      }
+      btnCreate.disabled = true;
 
       const payload = {
-        created_by: user.id,
-        assigned_to: f.assigned_to,
+        created_by: me.user.id,
+        assigned_to,
         status: "pendente",
-        ...f
+        nome_comercio,
+        segmento: segmentoEl.value.trim() || null,
+        telefone: telefoneEl.value.trim() || null,
+        contato_nome: contatoNomeEl.value.trim() || null,
+        contato_email: contatoEmailEl.value.trim() || null,
+        uf: (ufEl.value.trim() || "").toUpperCase() || null,
+        cidade: cidadeEl.value.trim() || null,
+        observacao: observacaoEl.value.trim() || null
       };
 
-      const { error } = await sb.from("demandas_credenciamento").insert(payload);
-      if (error) throw error;
+      try{
+        const { error } = await sb.from("demandas_credenciamento").insert(payload);
+        if(error) throw error;
 
-      toast("Demanda criada ✅");
-      // limpa básicos
-      ["nome_comercio","segmento","telefone","contato_nome","contato_email","uf","cidade","observacao"]
-        .forEach(id => document.getElementById(id).value = "");
+        toast("Demanda criada ✅");
+        createInfo.textContent = "Demanda criada com sucesso. Ela vai aparecer nas pendências do vendedor.";
 
-      await loadDemandas();
+        // limpa alguns campos
+        nomeComercioEl.value = "";
+        telefoneEl.value = "";
+        observacaoEl.value = "";
+
+        await loadLista(); // atualiza lista
+      } catch(err){
+        console.error(err);
+        toast("Erro ao criar demanda. Veja console (F12).");
+        createInfo.textContent = "Falha ao criar. Confere se seu usuário está como gestor/adm em profiles2.";
+      } finally {
+        btnCreate.disabled = false;
+      }
     }
 
-    try {
-      const { user, profile } = await getProfile();
+    async function loadLista(){
+      listaEl.textContent = "Carregando…";
 
-      document.getElementById("who").textContent = `${user.email} • ${profile.papel}`;
-      document.getElementById("btnLogout").onclick = logout;
+      const statusFilter = filterStatusEl.value;
 
-      if(!isAdminRole(profile.papel)){
-        toast("Sem acesso. Essa tela é só para ADM/Gestor.");
-        setTimeout(()=> location.href="dashboard.html", 900);
-        throw new Error("no_access");
+      // puxa vendedores pra mapear nomes
+      const { list, map } = await loadVendedores();
+
+      let q = sb
+        .from("demandas_credenciamento")
+        .select("id,created_at,status,nome_comercio,segmento,telefone,observacao,uf,cidade,assigned_to")
+        .order("created_at", { ascending: false })
+        .limit(200);
+
+      if(statusFilter !== "todos"){
+        q = q.eq("status", statusFilter);
       }
 
+      const { data, error } = await q;
+      if(error) throw error;
+
+      const arr = data || [];
+      if(!arr.length){
+        listaEl.innerHTML = `<div class="muted"><i>Nenhuma demanda por aqui.</i></div>`;
+        return;
+      }
+
+      listaEl.innerHTML = arr.map(d => itemHTML(d, map)).join("");
+
+      // events
+      listaEl.querySelectorAll("[data-act='copy']").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-id");
+          try{
+            await navigator.clipboard.writeText(id);
+            toast("ID copiado ✅");
+          } catch {
+            toast("Não consegui copiar. Copia na mão 😅");
+          }
+        });
+      });
+
+      listaEl.querySelectorAll("select[data-act='status']").forEach(sel => {
+        sel.addEventListener("change", async () => {
+          const id = sel.getAttribute("data-id");
+          const status = sel.value;
+
+          try{
+            const { error } = await sb
+              .from("demandas_credenciamento")
+              .update({ status })
+              .eq("id", id);
+
+            if(error) throw error;
+            toast("Status atualizado ✅");
+          } catch(err){
+            console.error(err);
+            toast("Falha ao atualizar status (RLS?).");
+          }
+        });
+      });
+    }
+
+    try{
+      me = await getProfile();
+
+      whoEl.textContent = `${me.profile.nome || "Usuário"} • ${me.profile.papel || "?"}`;
+
+      if(!isAdminPapel(me.profile.papel)){
+        toast("Sem permissão: apenas gestor/adm.");
+        listaEl.innerHTML = `<div class="muted">Acesso negado.</div>`;
+        throw new Error("not_admin");
+      }
+
+      btnLogout.onclick = logout;
+
+      // carregar vendedores e lista
       await loadVendedores();
-      await loadDemandas();
+      await loadLista();
 
-      document.getElementById("btnCriar").onclick = async () => {
-        try {
-          await createDemanda(user);
-        } catch (e) {
-          console.error(e);
-          toast("Erro ao criar demanda. Veja o console (F12).");
-        }
-      };
+      btnCreate.addEventListener("click", createDemanda);
+      btnReload.addEventListener("click", loadLista);
+      filterStatusEl.addEventListener("change", loadLista);
 
-    } catch (err) {
+    } catch(err){
       console.error(err);
+      if(String(err?.message || "").includes("not_admin")) return;
+      toast("Erro ao carregar ADM. Veja o console (F12).");
     }
   </script>
 </body>
