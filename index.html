@@ -17,19 +17,20 @@
       <input id="email" type="email" placeholder="E-mail">
       <input id="password" type="password" placeholder="Senha">
       <button id="btnLogin">Entrar</button>
+
+      <a href="#" id="btnForgot" class="link">Esqueci minha senha</a>
     </div>
 
     <!-- RESET SENHA -->
     <div id="resetBox" style="display:none">
-      <p class="muted" id="resetMsg">Carregando redefinição…</p>
+      <p class="muted" id="resetMsg">Validando link…</p>
 
       <input id="newpass" type="password" placeholder="Nova senha (mín. 6)">
       <input id="newpass2" type="password" placeholder="Confirmar nova senha">
+
       <button id="btnSave">Salvar nova senha</button>
 
-      <p class="small muted" style="margin-top:12px">
-        Se der erro de link, solicite o reset novamente no Supabase.
-      </p>
+      <a href="index.html" class="link" style="text-align:center">Voltar ao login</a>
     </div>
   </div>
 
@@ -39,78 +40,35 @@
     import { sb } from "./assets/supabaseClient.js";
     import { toast } from "./assets/app.js";
 
-    const loginBox  = document.getElementById("loginBox");
-    const resetBox  = document.getElementById("resetBox");
-    const subtitle  = document.getElementById("subtitle");
-    const resetMsg  = document.getElementById("resetMsg");
+    const loginBox = document.getElementById("loginBox");
+    const resetBox = document.getElementById("resetBox");
+    const subtitle = document.getElementById("subtitle");
 
-    const emailEl   = document.getElementById("email");
-    const passEl    = document.getElementById("password");
-    const btnLogin  = document.getElementById("btnLogin");
+    const emailEl  = document.getElementById("email");
+    const passEl   = document.getElementById("password");
 
-    const newpass   = document.getElementById("newpass");
-    const newpass2  = document.getElementById("newpass2");
-    const btnSave   = document.getElementById("btnSave");
+    const btnLogin = document.getElementById("btnLogin");
+    const btnForgot= document.getElementById("btnForgot");
 
-    let recoveryReady = false;
+    const resetMsg = document.getElementById("resetMsg");
+    const newpass  = document.getElementById("newpass");
+    const newpass2 = document.getElementById("newpass2");
+    const btnSave  = document.getElementById("btnSave");
 
-    function enterResetMode(message){
+    function showLogin(){
+      subtitle.textContent = "Módulo: Credenciamento Vegas";
+      resetBox.style.display = "none";
+      loginBox.style.display = "block";
+    }
+
+    function showReset(message){
       subtitle.textContent = "Redefinição de senha";
       loginBox.style.display = "none";
       resetBox.style.display = "block";
-      resetMsg.textContent = message || "Validando link…";
-      recoveryReady = false;
-      btnSave.disabled = true;
+      resetMsg.textContent = message || "Pronto! Crie sua nova senha.";
     }
 
-    function setResetReady(){
-      resetMsg.textContent = "Pronto! Agora crie sua nova senha.";
-      recoveryReady = true;
-      btnSave.disabled = false;
-    }
-
-    async function initRecoveryIfAny(){
-      const url = new URL(location.href);
-      const code = url.searchParams.get("code");
-
-      // A) link com ?code=...
-      if (code) {
-        enterResetMode("Validando link de recuperação…");
-        const { error } = await sb.auth.exchangeCodeForSession(code);
-        if (error) {
-          console.error(error);
-          resetMsg.textContent = "Link inválido/expirado. Solicite novamente.";
-          toast("Link inválido/expirado.");
-          return;
-        }
-        setResetReady();
-        return;
-      }
-
-      // B) link com #access_token=...&refresh_token=...
-      const hash = location.hash || "";
-      const params = new URLSearchParams(hash.replace("#",""));
-      const access_token = params.get("access_token");
-      const refresh_token = params.get("refresh_token");
-      const type = params.get("type");
-
-      if (access_token && refresh_token && (type === "recovery" || type === "signup")) {
-        enterResetMode("Validando link de recuperação…");
-        const { error } = await sb.auth.setSession({ access_token, refresh_token });
-        if (error) {
-          console.error(error);
-          resetMsg.textContent = "Link inválido/expirado. Solicite novamente.";
-          toast("Link inválido/expirado.");
-          return;
-        }
-        setResetReady();
-        return;
-      }
-
-      // Não é recovery → segue login normal
-    }
-
-    // LOGIN
+    // 1) LOGIN
     btnLogin.addEventListener("click", async () => {
       const email = emailEl.value.trim();
       const password = passEl.value;
@@ -130,42 +88,100 @@
       }
     });
 
-    // SALVAR NOVA SENHA
-    btnSave.addEventListener("click", async () => {
-      if (!recoveryReady) {
-        toast("Ainda validando o link… aguarde 2s e tente de novo.");
+    // 2) ESQUECI MINHA SENHA (manda email pelo próprio site)
+    btnForgot.addEventListener("click", async (e) => {
+      e.preventDefault();
+
+      const email = emailEl.value.trim();
+      if(!email){
+        toast("Digite seu e-mail primeiro 🙂");
         return;
       }
 
+      // redirect para o próprio index (aqui mesmo a gente trata o reset)
+      const redirectTo = `${location.origin}${location.pathname.replace(/\/[^\/]*$/, "")}/index.html`;
+
+      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo });
+
+      if(error){
+        console.error(error);
+        toast(error.message || "Não consegui enviar o e-mail de reset.");
+        return;
+      }
+
+      toast("Enviei o e-mail de redefinição. Confere a caixa de entrada.");
+    });
+
+    // 3) Ao voltar do e-mail, o Supabase pode trazer:
+    // - ?code=... (modo novo)
+    // - #access_token=... (modo antigo)
+    async function initRecoveryIfAny(){
+      const url = new URL(location.href);
+      const code = url.searchParams.get("code");
+
+      if(code){
+        showReset("Validando link…");
+        const { error } = await sb.auth.exchangeCodeForSession(code);
+        if(error){
+          console.error(error);
+          toast("Link inválido/expirado. Solicite novamente.");
+          showLogin();
+          return;
+        }
+        showReset("Pronto! Crie sua nova senha.");
+        return;
+      }
+
+      const hash = location.hash || "";
+      const params = new URLSearchParams(hash.replace("#",""));
+      const access_token = params.get("access_token");
+      const refresh_token = params.get("refresh_token");
+      const type = params.get("type");
+
+      if(access_token && refresh_token && (type === "recovery" || type === "signup")){
+        showReset("Validando link…");
+        const { error } = await sb.auth.setSession({ access_token, refresh_token });
+        if(error){
+          console.error(error);
+          toast("Link inválido/expirado. Solicite novamente.");
+          showLogin();
+          return;
+        }
+        showReset("Pronto! Crie sua nova senha.");
+      }
+    }
+
+    // 4) salvar nova senha
+    btnSave.addEventListener("click", async () => {
       const p1 = newpass.value;
       const p2 = newpass2.value;
 
-      if (!p1 || p1.length < 6) {
+      if(!p1 || p1.length < 6){
         toast("A senha precisa ter pelo menos 6 caracteres.");
         return;
       }
-      if (p1 !== p2) {
+      if(p1 !== p2){
         toast("As senhas não conferem.");
         return;
       }
 
       const { error } = await sb.auth.updateUser({ password: p1 });
-      if (error) {
+      if(error){
         console.error(error);
         toast(error.message || "Erro ao salvar senha.");
         return;
       }
 
-      toast("Senha alterada! Agora é só entrar 😄");
+      toast("Senha alterada! Agora entra com a nova senha 😄");
 
-      // limpa URL (tira code/hash) pra não ficar preso no reset
+      // limpa URL de recovery
       setTimeout(() => {
         history.replaceState({}, document.title, "index.html");
-        location.href = "index.html";
+        showLogin();
       }, 1200);
     });
 
-    // inicia recovery (se tiver)
+    // inicia tratamento do recovery se tiver
     await initRecoveryIfAny();
   </script>
 </body>
