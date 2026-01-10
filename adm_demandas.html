@@ -2,84 +2,112 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8">
-  <title>ADM • Demandas</title>
+  <title>Demandas • ADM</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
-  <div class="wrap">
-    <header class="topbar" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
-      <div>
-        <h1 style="margin:0">ADM • Demandas de Credenciamento</h1>
-        <div id="subtitle" class="muted">Carregando…</div>
-      </div>
-      <div style="display:flex;gap:10px;align-items:center">
-        <a class="btn" href="dashboard.html">← Voltar</a>
-      </div>
-    </header>
 
-    <main style="margin-top:18px;display:grid;gap:16px;max-width:1100px">
-      <section class="card">
-        <h2 style="margin:0 0 10px 0">Criar nova demanda</h2>
+  <header class="top">
+    <div>
+      <h1>Demandas • Administração</h1>
+      <div class="muted" id="who">Carregando…</div>
+    </div>
 
-        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+    <div style="display:flex;gap:10px;align-items:center">
+      <a class="btn-ghost" href="dashboard.html">Voltar</a>
+      <button id="btnLogout" class="btn-ghost">Sair</button>
+    </div>
+  </header>
+
+  <main class="wrap" style="display:grid;gap:16px;grid-template-columns: 1fr 1fr; align-items:start">
+
+    <section class="card">
+      <h2>➕ Criar demanda</h2>
+
+      <div class="grid2">
+        <div>
+          <label class="lbl">Vendedor</label>
           <select id="assigned_to"></select>
-          <input id="nome_comercio" placeholder="Nome do comércio *">
-
-          <input id="segmento" placeholder="Segmento">
-          <input id="telefone" placeholder="Telefone">
-
-          <input id="contato_nome" placeholder="Nome do contato">
-          <input id="contato_email" placeholder="E-mail do contato">
-
-          <input id="uf" placeholder="UF (ex: SP)" maxlength="2">
-          <input id="cidade" placeholder="Cidade">
+        </div>
+        <div>
+          <label class="lbl">Nome do comércio</label>
+          <input id="nome_comercio" placeholder="Ex: Mercado Central">
         </div>
 
-        <div style="margin-top:10px">
-          <textarea id="observacao" rows="3" placeholder="Observações / argumentos / contexto pro vendedor"></textarea>
+        <div>
+          <label class="lbl">Segmento</label>
+          <input id="segmento" placeholder="Ex: Mercado / Farmácia">
+        </div>
+        <div>
+          <label class="lbl">Telefone</label>
+          <input id="telefone" placeholder="(xx) xxxxx-xxxx">
         </div>
 
-        <div style="margin-top:10px">
-          <button class="btn" id="btnCreate">Criar demanda</button>
+        <div>
+          <label class="lbl">Contato</label>
+          <input id="contato_nome" placeholder="Nome do responsável">
         </div>
-      </section>
+        <div>
+          <label class="lbl">E-mail do contato</label>
+          <input id="contato_email" placeholder="email@comercio.com">
+        </div>
 
-      <section class="card">
-        <h2 style="margin:0 0 10px 0">Acompanhar demandas</h2>
-        <div id="listEmpty" class="muted">Carregando…</div>
-        <div id="list" style="display:grid;gap:10px"></div>
-      </section>
-    </main>
-  </div>
+        <div>
+          <label class="lbl">UF</label>
+          <input id="uf" placeholder="SP" maxlength="2">
+        </div>
+        <div>
+          <label class="lbl">Cidade</label>
+          <input id="cidade" placeholder="Americana">
+        </div>
+      </div>
+
+      <div style="margin-top:10px">
+        <label class="lbl">Observação (argumentos/infos pro vendedor)</label>
+        <textarea id="observacao" rows="4" placeholder="Ex: Indicação da Pós-venda, cliente quer retorno hoje…"></textarea>
+      </div>
+
+      <div style="margin-top:14px">
+        <button id="btnCriar" class="btn">Criar demanda</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>📌 Acompanhamento</h2>
+      <div id="lista" class="list">Carregando…</div>
+    </section>
+
+  </main>
 
   <div class="toast" id="toast"></div>
 
   <script type="module">
     import { sb } from "./assets/supabaseClient.js";
-    import { ensureProfile, toast, humanError } from "./assets/app.js";
+    import { getProfile, logout, toast, isAdminRole } from "./assets/app.js";
 
-    const subtitle = document.getElementById("subtitle");
-    const assignedTo = document.getElementById("assigned_to");
-    const btnCreate = document.getElementById("btnCreate");
+    const selV = document.getElementById("assigned_to");
+    const lista = document.getElementById("lista");
 
-    const listEmpty = document.getElementById("listEmpty");
-    const list = document.getElementById("list");
-
-    const f = (id) => document.getElementById(id);
-
-    let user, prof;
-
-    function rowCard(title, meta) {
+    function itemHTML(d){
+      const local = d.cidade ? `${d.cidade}${d.uf ? " / "+d.uf : ""}` : "—";
       return `
-        <div style="padding:12px;border-radius:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
-          <div style="font-weight:800">${title}</div>
-          <div class="muted" style="margin-top:6px">${meta}</div>
+        <div class="item">
+          <div class="row">
+            <b>${d.nome_comercio}</b>
+            <span class="badge">${d.status}</span>
+          </div>
+          <div class="muted">
+            ${d.vendedor_nome || "—"}<br>
+            ${d.segmento || "—"} • ${d.telefone || "—"} • ${local}
+          </div>
+          ${d.observacao ? `<div class="small" style="margin-top:6px">${d.observacao}</div>` : ""}
+          ${d.negociacao_id ? `<div class="small muted" style="margin-top:8px">Negociação: ${d.negociacao_id}</div>` : ""}
         </div>
       `;
     }
 
-    async function loadVendedores() {
+    async function loadVendedores(){
       const { data, error } = await sb
         .from("profiles2")
         .select("id,nome,papel")
@@ -87,98 +115,108 @@
 
       if (error) throw error;
 
-      const vendedores = (data || []).filter(p => p.papel === "vendedor");
-      assignedTo.innerHTML = vendedores.map(v => `<option value="${v.id}">${v.nome || v.id}</option>`).join("");
+      const vend = (data || []).filter(p => (p.papel || "").toLowerCase() === "vendedor");
+
+      selV.innerHTML = vend.map(v => `<option value="${v.id}">${v.nome || v.id}</option>`).join("");
+      if (!vend.length) {
+        selV.innerHTML = `<option value="">Nenhum vendedor cadastrado em profiles2</option>`;
+      }
     }
 
-    async function loadDemandas() {
-      listEmpty.textContent = "Carregando…";
-      list.innerHTML = "";
-
+    async function loadDemandas(){
       const { data, error } = await sb
         .from("demandas_credenciamento")
-        .select("id,status,nome_comercio,segmento,telefone,cidade,uf,observacao,created_at,assigned_to,negociacao_id")
+        .select("id,nome_comercio,segmento,telefone,observacao,uf,cidade,status,created_at,assigned_to,negociacao_id")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      if (!data || !data.length) {
-        listEmpty.textContent = "Nenhuma demanda criada ainda.";
+      if (!(data||[]).length){
+        lista.innerHTML = `<div class="muted"><i>Nenhuma demanda criada ainda.</i></div>`;
         return;
       }
 
-      listEmpty.style.display = "none";
-      list.innerHTML = data.map(d => {
-        const dt = new Date(d.created_at).toLocaleString("pt-BR");
-        const meta = [
-          `Status: ${d.status}`,
-          d.segmento ? `Segmento: ${d.segmento}` : null,
-          d.telefone ? `Tel: ${d.telefone}` : null,
-          (d.cidade || d.uf) ? `Local: ${(d.cidade||"")}${d.cidade && d.uf ? " / " : ""}${(d.uf||"")}` : null,
-          d.observacao ? `Obs: ${d.observacao}` : null,
-          `Criado: ${dt}`,
-          d.negociacao_id ? `Negociação: ${d.negociacao_id}` : null
-        ].filter(Boolean).join(" • ");
+      // buscar nomes dos vendedores
+      const ids = [...new Set(data.map(x => x.assigned_to))].filter(Boolean);
+      const { data: ps } = await sb.from("profiles2").select("id,nome").in("id", ids);
 
-        return rowCard(d.nome_comercio, meta);
-      }).join("");
+      const map = new Map((ps||[]).map(p => [p.id, p.nome]));
+      const withNames = data.map(d => ({...d, vendedor_nome: map.get(d.assigned_to) || "—"}));
+
+      lista.innerHTML = withNames.map(itemHTML).join("");
     }
 
-    btnCreate.addEventListener("click", async () => {
-      try {
-        const payload = {
-          created_by: user.id,
-          assigned_to: assignedTo.value,
-          status: "pendente",
-          nome_comercio: f("nome_comercio").value.trim(),
-          segmento: f("segmento").value.trim() || null,
-          telefone: f("telefone").value.trim() || null,
-          contato_nome: f("contato_nome").value.trim() || null,
-          contato_email: f("contato_email").value.trim() || null,
-          uf: (f("uf").value.trim() || "").toUpperCase() || null,
-          cidade: f("cidade").value.trim() || null,
-          observacao: f("observacao").value.trim() || null
-        };
+    function getForm(){
+      const uf = (document.getElementById("uf").value || "").trim().toUpperCase().slice(0,2);
+      return {
+        assigned_to: selV.value,
+        nome_comercio: (document.getElementById("nome_comercio").value||"").trim(),
+        segmento: (document.getElementById("segmento").value||"").trim(),
+        telefone: (document.getElementById("telefone").value||"").trim(),
+        contato_nome: (document.getElementById("contato_nome").value||"").trim(),
+        contato_email: (document.getElementById("contato_email").value||"").trim(),
+        uf,
+        cidade: (document.getElementById("cidade").value||"").trim(),
+        observacao: (document.getElementById("observacao").value||"").trim(),
+      };
+    }
 
-        if (!payload.nome_comercio) {
-          toast("Preencha o nome do comércio.");
-          return;
-        }
-
-        const { error } = await sb.from("demandas_credenciamento").insert(payload);
-        if (error) throw error;
-
-        // limpa campos
-        ["nome_comercio","segmento","telefone","contato_nome","contato_email","uf","cidade","observacao"]
-          .forEach(id => f(id).value = "");
-
-        toast("Demanda criada ✅");
-        await loadDemandas();
-      } catch (err) {
-        console.error(err);
-        toast(humanError(err));
+    async function createDemanda(user){
+      const f = getForm();
+      if(!f.assigned_to){
+        toast("Selecione um vendedor.");
+        return;
       }
-    });
-
-    (async function init(){
-      const ctx = await ensureProfile();
-      user = ctx.user;
-      prof = ctx.prof;
-
-      if (!(prof.papel === "adm" || prof.papel === "gestor")) {
-        subtitle.textContent = "Acesso negado. Apenas ADM/Gestor.";
-        toast("Acesso negado.");
+      if(!f.nome_comercio){
+        toast("Informe o nome do comércio.");
         return;
       }
 
-      subtitle.textContent = `${user.email} • ${prof.papel}`;
+      const payload = {
+        created_by: user.id,
+        assigned_to: f.assigned_to,
+        status: "pendente",
+        ...f
+      };
+
+      const { error } = await sb.from("demandas_credenciamento").insert(payload);
+      if (error) throw error;
+
+      toast("Demanda criada ✅");
+      // limpa básicos
+      ["nome_comercio","segmento","telefone","contato_nome","contato_email","uf","cidade","observacao"]
+        .forEach(id => document.getElementById(id).value = "");
+
+      await loadDemandas();
+    }
+
+    try {
+      const { user, profile } = await getProfile();
+
+      document.getElementById("who").textContent = `${user.email} • ${profile.role}`;
+      document.getElementById("btnLogout").onclick = logout;
+
+      if(!isAdminRole(profile.role)){
+        toast("Sem acesso. Essa tela é só para ADM/Gestor.");
+        setTimeout(()=> location.href="dashboard.html", 900);
+        throw new Error("no_access");
+      }
+
       await loadVendedores();
       await loadDemandas();
-    })().catch(err => {
+
+      document.getElementById("btnCriar").onclick = async () => {
+        try {
+          await createDemanda(user);
+        } catch (e) {
+          console.error(e);
+          toast("Erro ao criar demanda. Veja o console (F12).");
+        }
+      };
+
+    } catch (err) {
       console.error(err);
-      toast("Falha ao carregar. Veja o console (F12).");
-    });
+    }
   </script>
 </body>
 </html>
-
