@@ -14,7 +14,7 @@ export function toast(msg) {
   t.textContent = msg;
   t.style.display = "block";
   clearTimeout(window.__t);
-  window.__t = setTimeout(() => (t.style.display = "none"), 2800);
+  window.__t = setTimeout(() => (t.style.display = "none"), 2600);
 }
 
 export async function requireAuth() {
@@ -26,88 +26,35 @@ export async function requireAuth() {
   return data.session.user;
 }
 
-function normalizeRole(papel) {
-  const r = (papel || "").toLowerCase();
-  if (["adm", "admin"].includes(r)) return "adm";
-  if (["gestor", "manager"].includes(r)) return "gestor";
-  return "vendedor";
-}
-
 /**
- * Carrega o perfil em profiles2.
- * Se não existir, cria automaticamente com:
- * - id = user.id
- * - nome = metadata.nome | metadata.name | email
- * - papel = vendedor (padrão)
- *
- * Retorna { user, profile: { id, nome, role } }
+ * Lê o perfil do usuário em profiles2.
+ * IMPORTANTE: no seu banco a coluna é "papel" (não "role").
  */
 export async function getProfile() {
   const user = await requireAuth();
   if (!user) return null;
 
-  // 1) tenta ler
-  const { data: prof, error } = await sb
+  const { data: profile, error } = await sb
     .from("profiles2")
-    .select("id,nome,papel")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (!error && prof) {
-    return {
-      user,
-      profile: {
-        id: prof.id,
-        nome: prof.nome || user.email || "Usuário",
-        role: normalizeRole(prof.papel),
-      },
-    };
-  }
-
-  // 2) cria se não existe
-  const nomeAuto =
-    user.user_metadata?.nome ||
-    user.user_metadata?.name ||
-    user.email ||
-    "Usuário";
-
-  const papelAuto = normalizeRole(user.user_metadata?.role || "vendedor");
-
-  const { error: insErr } = await sb.from("profiles2").insert({
-    id: user.id,
-    nome: nomeAuto,
-    papel: papelAuto,
-  });
-
-  if (insErr) {
-    console.error("ERRO criando profiles2:", insErr);
-    toast(
-      "Não consegui criar seu perfil automaticamente. Verifique as políticas (RLS) da tabela profiles2."
-    );
-    throw insErr;
-  }
-
-  // 3) lê de novo
-  const { data: prof2, error: selErr2 } = await sb
-    .from("profiles2")
-    .select("id,nome,papel")
+    .select("id,nome,papel,email")
     .eq("id", user.id)
     .single();
 
-  if (selErr2 || !prof2) {
-    console.error("ERRO lendo profiles2:", selErr2);
-    toast("Criei seu perfil, mas não consegui carregar. Verifique RLS.");
-    throw selErr2 || new Error("profile_readback_failed");
+  if (error || !profile) {
+    toast("Perfil não encontrado em profiles2. Confere se existe id=user.id.");
+    throw error || new Error("profile_not_found");
   }
 
-  return {
-    user,
-    profile: {
-      id: prof2.id,
-      nome: prof2.nome || user.email || "Usuário",
-      role: normalizeRole(prof2.papel),
-    },
-  };
+  return { user, profile };
+}
+
+// compat: se algum arquivo antigo chamar ensureProfile, funciona igual
+export const ensureProfile = getProfile;
+
+/** ADM/Gestor? (baseado no profiles2.papel) */
+export function isAdminPapel(papel) {
+  const p = String(papel || "").toLowerCase();
+  return p === "adm" || p === "gestor" || p === "adm_comercial";
 }
 
 export async function logout() {
@@ -115,10 +62,28 @@ export async function logout() {
   location.href = "index.html";
 }
 
-export function isAdminRole(role) {
-  return role === "adm" || role === "gestor";
+export function periodStart(kind) {
+  const d = new Date();
+  if (kind === "all") return new Date("2000-01-01T00:00:00");
+  if (kind === "mtd") return new Date(d.getFullYear(), d.getMonth(), 1);
+  const days = Number(kind);
+  const s = new Date();
+  s.setDate(s.getDate() - days);
+  return s;
 }
 
-export function q(name) {
-  return new URL(location.href).searchParams.get(name);
+export function bindChipGroup(groupId, onChange) {
+  const root = el(groupId);
+  if (!root) return;
+
+  root.querySelectorAll(".chip").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      root.querySelectorAll(".chip").forEach((b) =>
+        b.setAttribute("aria-pressed", "false")
+      );
+      btn.setAttribute("aria-pressed", "true");
+      root.dataset.value = btn.dataset.value || btn.textContent.trim();
+      onChange?.(root.dataset.value);
+    })
+  );
 }
