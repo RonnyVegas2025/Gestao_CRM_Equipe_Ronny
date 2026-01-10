@@ -14,27 +14,23 @@
       <div class="muted" id="who">Carregando…</div>
     </div>
 
-    <div style="display:flex;gap:10px;align-items:center">
-      <a id="btnAdm" class="btn-ghost" href="adm_demandas.html" style="display:none">Demandas (ADM)</a>
-      <button id="btnLogout" class="btn-ghost">Sair</button>
-    </div>
+    <button id="btnLogout" class="btn-ghost">Sair</button>
   </header>
 
   <main class="wrap">
 
     <section class="card">
-      <div class="row" style="justify-content:space-between;align-items:center">
-        <h2 style="margin:0">📌 Pendências (Demandas)</h2>
-      </div>
+      <h2>📌 Pendências (Demandas)</h2>
       <div id="demandas" class="list">Carregando…</div>
     </section>
 
     <section class="card">
-      <div class="row" style="justify-content:space-between;align-items:center">
-        <h2 style="margin:0">📋 Minhas negociações</h2>
-        <button id="btnNova" class="btn">+ Nova negociação</button>
+      <h2>📋 Minhas negociações</h2>
+      <div class="row" style="justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div class="muted">Lista (em breve) + botão de nova negociação.</div>
+        <a class="btn" href="negociacoes.html">+ Nova negociação</a>
       </div>
-      <div id="negociacoes" class="list">Carregando…</div>
+      <div id="negociacoes" class="list" style="margin-top:12px">Carregando…</div>
     </section>
 
   </main>
@@ -43,7 +39,7 @@
 
   <script type="module">
     import { sb } from "./assets/supabaseClient.js";
-    import { getProfile, logout, toast, isAdminRole } from "./assets/app.js";
+    import { getProfile, logout, toast } from "./assets/app.js";
 
     const demandasEl = document.getElementById("demandas");
     const negEl = document.getElementById("negociacoes");
@@ -53,7 +49,6 @@
     }
 
     function demandaHTML(d){
-      const local = d.cidade ? `${d.cidade}${d.uf ? " / "+d.uf : ""}` : "—";
       return `
         <div class="item">
           <div class="row">
@@ -62,167 +57,77 @@
           </div>
           <div class="muted">
             ${d.segmento || "—"} • ${d.telefone || "—"}<br>
-            ${local}
+            ${d.cidade ? (d.cidade + " / " + (d.uf||"")) : ""}
           </div>
           ${d.observacao ? `<div class="small" style="margin-top:6px">${d.observacao}</div>` : ""}
-          <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
-            ${
-              d.status === "pendente"
-              ? `<button class="btn" data-aceitar="${d.id}">Aceitar e virar negociação</button>`
-              : (d.negociacao_id
-                 ? `<a class="btn" href="negociacao.html?id=${d.negociacao_id}">Abrir negociação</a>`
-                 : `<button class="btn" disabled>Sem negociação vinculada</button>`
-                )
-            }
+          <div style="margin-top:10px">
+            <button class="btn" disabled title="Vamos habilitar no próximo módulo">
+              Virar negociação (em breve)
+            </button>
           </div>
         </div>
       `;
     }
 
     function negHTML(n){
-      const local = n.cidade ? `${n.cidade}${n.uf ? " / "+n.uf : ""}` : "—";
       return `
         <div class="item">
           <div class="row">
-            <b>${n.nome_comercio}</b>
+            <b>${n.nome_fantasia || n.nome_fantasia === "" ? n.nome_fantasia : (n.nome_comercio || n.razao_social || "Negociação")}</b>
             ${badge(n.status)}
           </div>
           <div class="muted">
-            ${n.segmento || "—"} • ${n.telefone || "—"}<br>
-            ${local}
+            ${n.cidade ? (n.cidade + " / " + (n.uf||"")) : ""} • ${n.segmento || "—"}
           </div>
           <div style="margin-top:10px">
-            <a class="btn" href="negociacao.html?id=${n.id}">Abrir</a>
+            <a class="btn" href="detalhe.html?id=${n.id}">Abrir</a>
           </div>
         </div>
       `;
     }
 
-    async function loadDemandas(user){
-      const { data, error } = await sb
-        .from("demandas_credenciamento")
-        .select("id,nome_comercio,segmento,telefone,observacao,uf,cidade,status,created_at,negociacao_id")
-        .eq("assigned_to", user.id)
-        .order("created_at", { ascending: true });
-
-      if (error) throw error;
-
-      const pend = (data || []).filter(x => x.status !== "cancelada" && x.status !== "concluida");
-
-      if (!pend.length) {
-        demandasEl.innerHTML = `<div class="muted"><i>Sem pendências 🎉</i></div>`;
-      } else {
-        demandasEl.innerHTML = pend.map(demandaHTML).join("");
-      }
-    }
-
-    async function loadNegociacoes(user){
-      const { data, error } = await sb
-        .from("negociacoes")
-        .select("id,nome_comercio,segmento,telefone,uf,cidade,status,created_at")
-        .eq("assigned_to", user.id)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      if (!(data || []).length) {
-        negEl.innerHTML = `<div class="muted"><i>Nenhuma negociação ainda. Clique em “+ Nova negociação”.</i></div>`;
-      } else {
-        negEl.innerHTML = data.map(negHTML).join("");
-      }
-    }
-
-    async function aceitarDemanda(user, demandaId){
-      // pega demanda
-      const { data: d, error: e1 } = await sb
-        .from("demandas_credenciamento")
-        .select("*")
-        .eq("id", demandaId)
-        .single();
-
-      if (e1) throw e1;
-
-      // cria negociação copiando o básico
-      const payload = {
-        created_by: user.id,
-        assigned_to: user.id,
-        status: "em_negociacao",
-        nome_comercio: d.nome_comercio,
-        segmento: d.segmento,
-        telefone: d.telefone,
-        contato_nome: d.contato_nome,
-        contato_email: d.contato_email,
-        uf: d.uf,
-        cidade: d.cidade,
-        observacao: d.observacao
-      };
-
-      const { data: nIns, error: e2 } = await sb
-        .from("negociacoes")
-        .insert(payload)
-        .select("id")
-        .single();
-
-      if (e2) throw e2;
-
-      // atualiza demanda
-      const { error: e3 } = await sb
-        .from("demandas_credenciamento")
-        .update({ status: "aceita", negociacao_id: nIns.id })
-        .eq("id", demandaId);
-
-      if (e3) throw e3;
-
-      // cria log inicial
-      await sb.from("action_logs").insert({
-        negociacao_id: nIns.id,
-        created_by: user.id,
-        tipo: "sistema",
-        titulo: "Negociação criada a partir de demanda",
-        descricao: "Demanda aceita e convertida para negociação."
-      });
-
-      toast("Demanda aceita! Abrindo negociação…");
-      setTimeout(()=> location.href = `negociacao.html?id=${nIns.id}`, 600);
-    }
-
     try {
       const { user, profile } = await getProfile();
 
-      document.getElementById("who").textContent = `${user.email} • ${profile.role}`;
+      document.getElementById("who").textContent =
+        `${profile.nome || "Usuário"} • ${profile.papel || "vendedor"}`;
+
       document.getElementById("btnLogout").onclick = logout;
 
-      if (isAdminRole(profile.role)) {
-        document.getElementById("btnAdm").style.display = "inline-flex";
-      }
+      // DEMANDAS pendentes do vendedor
+      const { data: dem, error: demErr } = await sb
+        .from("demandas_credenciamento")
+        .select("id,nome_comercio,segmento,telefone,observacao,uf,cidade,status,created_at")
+        .eq("assigned_to", user.id)
+        .order("created_at", { ascending: true });
 
-      document.getElementById("btnNova").onclick = () => {
-        location.href = "negociacao.html";
-      };
+      if (demErr) throw demErr;
 
-      await loadDemandas(user);
-      await loadNegociacoes(user);
+      const pendentes = (dem || []).filter(x => x.status === "pendente");
 
-      // delegação de clique
-      document.addEventListener("click", async (ev) => {
-        const btn = ev.target.closest("[data-aceitar]");
-        if (!btn) return;
-        const id = btn.getAttribute("data-aceitar");
-        btn.disabled = true;
-        btn.textContent = "Aceitando…";
-        try {
-          await aceitarDemanda(user, id);
-        } catch (err) {
-          console.error(err);
-          toast("Não consegui aceitar a demanda. Veja o console (F12).");
-          btn.disabled = false;
-          btn.textContent = "Aceitar e virar negociação";
-        }
-      });
+      demandasEl.innerHTML = pendentes.length
+        ? pendentes.map(demandaHTML).join("")
+        : `<div class="muted"><i>Sem pendências 🎉</i></div>`;
+
+      // NEGOCIAÇÕES do vendedor (lista básica)
+      const { data: negs, error: negErr } = await sb
+        .from("negociacoes")
+        .select("id,status,segmento,uf,cidade,razao_social,nome_fantasia,nome_comercio,created_at")
+        .eq("assigned_to", user.id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      if (negErr) throw negErr;
+
+      negEl.innerHTML = (negs && negs.length)
+        ? negs.map(negHTML).join("")
+        : `<div class="muted"><i>Nenhuma negociação ainda.</i></div>`;
 
     } catch (err) {
       console.error(err);
       toast("Erro ao carregar dashboard. Veja o console (F12).");
+      demandasEl.innerHTML = `<div class="muted">Falha ao carregar.</div>`;
+      negEl.innerHTML = `<div class="muted">Falha ao carregar.</div>`;
     }
   </script>
 </body>
