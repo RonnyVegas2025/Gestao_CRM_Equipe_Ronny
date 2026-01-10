@@ -17,18 +17,19 @@
       <input id="email" type="email" placeholder="E-mail">
       <input id="password" type="password" placeholder="Senha">
       <button id="btnLogin">Entrar</button>
-
-      <p class="small muted" style="margin-top:12px">
-        Esqueceu a senha? Use o reset pelo Supabase (por enquanto).
-      </p>
     </div>
 
     <!-- RESET SENHA -->
     <div id="resetBox" style="display:none">
-      <p class="muted" id="resetMsg">Validando link…</p>
-      <input id="newpass" type="password" placeholder="Nova senha (mín. 6)" style="display:none">
-      <input id="newpass2" type="password" placeholder="Confirmar nova senha" style="display:none">
-      <button id="btnSave" style="display:none">Salvar nova senha</button>
+      <p class="muted" id="resetMsg">Carregando redefinição…</p>
+
+      <input id="newpass" type="password" placeholder="Nova senha (mín. 6)">
+      <input id="newpass2" type="password" placeholder="Confirmar nova senha">
+      <button id="btnSave">Salvar nova senha</button>
+
+      <p class="small muted" style="margin-top:12px">
+        Se der erro de link, solicite o reset novamente no Supabase.
+      </p>
     </div>
   </div>
 
@@ -38,48 +39,55 @@
     import { sb } from "./assets/supabaseClient.js";
     import { toast } from "./assets/app.js";
 
-    const loginBox = document.getElementById("loginBox");
-    const resetBox = document.getElementById("resetBox");
-    const subtitle = document.getElementById("subtitle");
-    const resetMsg = document.getElementById("resetMsg");
+    const loginBox  = document.getElementById("loginBox");
+    const resetBox  = document.getElementById("resetBox");
+    const subtitle  = document.getElementById("subtitle");
+    const resetMsg  = document.getElementById("resetMsg");
 
-    const newpass = document.getElementById("newpass");
-    const newpass2 = document.getElementById("newpass2");
-    const btnSave = document.getElementById("btnSave");
+    const emailEl   = document.getElementById("email");
+    const passEl    = document.getElementById("password");
+    const btnLogin  = document.getElementById("btnLogin");
 
-    function showResetUI(message){
+    const newpass   = document.getElementById("newpass");
+    const newpass2  = document.getElementById("newpass2");
+    const btnSave   = document.getElementById("btnSave");
+
+    let recoveryReady = false;
+
+    function enterResetMode(message){
       subtitle.textContent = "Redefinição de senha";
       loginBox.style.display = "none";
       resetBox.style.display = "block";
-      resetMsg.textContent = message;
+      resetMsg.textContent = message || "Validando link…";
+      recoveryReady = false;
+      btnSave.disabled = true;
     }
 
-    function showResetForm(){
-      newpass.style.display = "block";
-      newpass2.style.display = "block";
-      btnSave.style.display = "block";
+    function setResetReady(){
       resetMsg.textContent = "Pronto! Agora crie sua nova senha.";
+      recoveryReady = true;
+      btnSave.disabled = false;
     }
 
     async function initRecoveryIfAny(){
       const url = new URL(location.href);
       const code = url.searchParams.get("code");
 
-      // Caso A) link com ?code=...
+      // A) link com ?code=...
       if (code) {
-        showResetUI("Validando link de recuperação…");
+        enterResetMode("Validando link de recuperação…");
         const { error } = await sb.auth.exchangeCodeForSession(code);
         if (error) {
           console.error(error);
-          toast("Link inválido/expirado. Solicite novamente.");
           resetMsg.textContent = "Link inválido/expirado. Solicite novamente.";
-          return false;
+          toast("Link inválido/expirado.");
+          return;
         }
-        showResetForm();
-        return true;
+        setResetReady();
+        return;
       }
 
-      // Caso B) link com #access_token=...&refresh_token=...&type=recovery
+      // B) link com #access_token=...&refresh_token=...
       const hash = location.hash || "";
       const params = new URLSearchParams(hash.replace("#",""));
       const access_token = params.get("access_token");
@@ -87,28 +95,25 @@
       const type = params.get("type");
 
       if (access_token && refresh_token && (type === "recovery" || type === "signup")) {
-        showResetUI("Validando link de recuperação…");
+        enterResetMode("Validando link de recuperação…");
         const { error } = await sb.auth.setSession({ access_token, refresh_token });
         if (error) {
           console.error(error);
-          toast("Não consegui validar o link. Solicite novamente.");
-          resetMsg.textContent = "Não consegui validar o link. Solicite novamente.";
-          return false;
+          resetMsg.textContent = "Link inválido/expirado. Solicite novamente.";
+          toast("Link inválido/expirado.");
+          return;
         }
-        showResetForm();
-        return true;
+        setResetReady();
+        return;
       }
 
-      return false; // não é recovery, segue login normal
+      // Não é recovery → segue login normal
     }
 
-    // 1) tenta modo recovery
-    const isRecovery = await initRecoveryIfAny();
-
-    // 2) login normal
-    document.getElementById("btnLogin").onclick = async () => {
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value;
+    // LOGIN
+    btnLogin.addEventListener("click", async () => {
+      const email = emailEl.value.trim();
+      const password = passEl.value;
 
       if(!email || !password){
         toast("Preenche e-mail e senha 😅");
@@ -123,11 +128,14 @@
       } else {
         location.href = "dashboard.html";
       }
-    };
+    });
 
-    // 3) salvar nova senha (quando for recovery)
-    btnSave.onclick = async () => {
-      if (!isRecovery) return;
+    // SALVAR NOVA SENHA
+    btnSave.addEventListener("click", async () => {
+      if (!recoveryReady) {
+        toast("Ainda validando o link… aguarde 2s e tente de novo.");
+        return;
+      }
 
       const p1 = newpass.value;
       const p2 = newpass2.value;
@@ -149,12 +157,16 @@
       }
 
       toast("Senha alterada! Agora é só entrar 😄");
-      // limpa URL (tira code/hash) pra não ficar tentando reset de novo
+
+      // limpa URL (tira code/hash) pra não ficar preso no reset
       setTimeout(() => {
         history.replaceState({}, document.title, "index.html");
         location.href = "index.html";
       }, 1200);
-    };
+    });
+
+    // inicia recovery (se tiver)
+    await initRecoveryIfAny();
   </script>
 </body>
 </html>
