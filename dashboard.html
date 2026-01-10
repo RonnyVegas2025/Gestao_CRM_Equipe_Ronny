@@ -1,1 +1,94 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <title>Dashboard • Credenciamento</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+
+  <header class="top">
+    <div>
+      <h1>Credenciamento • Dashboard</h1>
+      <div class="muted" id="who">Carregando…</div>
+    </div>
+
+    <button id="btnLogout" class="btn-ghost">Sair</button>
+  </header>
+
+  <main class="wrap">
+
+    <section class="card">
+      <h2>📌 Pendências (Demandas)</h2>
+      <div id="demandas" class="list">Carregando…</div>
+    </section>
+
+    <section class="card">
+      <h2>📋 Minhas negociações (em breve)</h2>
+      <div class="muted">Próximo passo: tela de negociação + timeline + gerar ficha.</div>
+    </section>
+
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script type="module">
+    import { sb } from "./assets/supabaseClient.js";
+    import { getProfile, logout, toast } from "./assets/app.js";
+
+    const demandasEl = document.getElementById("demandas");
+
+    function itemHTML(d){
+      return `
+        <div class="item">
+          <div class="row">
+            <b>${d.nome_comercio}</b>
+            <span class="badge">${d.status}</span>
+          </div>
+          <div class="muted">
+            ${d.segmento || "—"} • ${d.telefone || "—"}<br>
+            ${d.cidade ? (d.cidade + " / " + (d.uf||"")) : ""}
+          </div>
+          ${d.observacao ? `<div class="small" style="margin-top:6px">${d.observacao}</div>` : ""}
+          <div style="margin-top:10px">
+            <button class="btn" disabled title="Vamos habilitar no próximo módulo">
+              Virar negociação (em breve)
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    try {
+      const { user, profile } = await getProfile();
+
+      document.getElementById("who").textContent =
+        `${profile.nome} • ${profile.role}`;
+
+      document.getElementById("btnLogout").onclick = logout;
+
+      const { data, error } = await sb
+        .from("demandas_credenciamento")
+        .select("id,nome_comercio,segmento,telefone,observacao,uf,cidade,status,created_at")
+        .eq("assigned_to", user.id)
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+
+      const pendentes = (data || []).filter(x => x.status === "pendente");
+
+      if (!pendentes.length) {
+        demandasEl.innerHTML = `<div class="muted"><i>Sem pendências 🎉</i></div>`;
+      } else {
+        demandasEl.innerHTML = pendentes.map(itemHTML).join("");
+      }
+
+    } catch (err) {
+      console.error(err);
+      toast("Erro ao carregar dashboard. Veja o console (F12).");
+    }
+  </script>
+</body>
+</html>
 
