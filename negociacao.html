@@ -1,1 +1,347 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <title>Negociação • Credenciamento</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
+      <div>
+        <h1 style="margin:0">Negociação</h1>
+        <div id="subtitle" class="muted">Carregando…</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <a class="btn" href="dashboard.html">← Voltar</a>
+        <button class="btn" id="btnSave">Salvar</button>
+        <button class="btn" id="btnConcluir">Concluir</button>
+        <button class="btn" id="btnGerarFicha" style="display:none">Gerar ficha</button>
+      </div>
+    </header>
+
+    <main style="margin-top:18px;display:grid;gap:16px;max-width:1100px">
+      <section class="card">
+        <h2 style="margin:0 0 10px 0">Dados do comércio</h2>
+
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+          <input id="nome_comercio" placeholder="Nome do comércio *">
+          <input id="cnpj" placeholder="CNPJ (opcional)">
+
+          <input id="segmento" placeholder="Segmento">
+          <input id="telefone" placeholder="Telefone">
+
+          <input id="contato_nome" placeholder="Nome do contato">
+          <input id="contato_email" placeholder="E-mail do contato">
+
+          <input id="uf" placeholder="UF (ex: SP)" maxlength="2">
+          <input id="cidade" placeholder="Cidade">
+        </div>
+
+        <div style="margin-top:10px">
+          <textarea id="observacao" rows="3" placeholder="Observações / contexto"></textarea>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 style="margin:0 0 10px 0">Acordo comercial</h2>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+          <input id="taxa_adm" placeholder="Taxa ADM (ex: 3,20%)">
+          <input id="prazo_pgto" placeholder="Prazo de pagamento (ex: dia 25 / dia 15)">
+        </div>
+
+        <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <label class="muted">Status:</label>
+          <select id="status">
+            <option value="em_negociacao">Em negociação</option>
+            <option value="pendente">Pendente</option>
+            <option value="concluida">Concluída</option>
+            <option value="cancelada">Cancelada</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 style="margin:0 0 10px 0">Timeline</h2>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <select id="log_tipo">
+            <option value="nota">Nota</option>
+            <option value="ligacao">Ligação</option>
+            <option value="whatsapp">WhatsApp</option>
+            <option value="visita">Visita</option>
+            <option value="email">E-mail</option>
+            <option value="status">Status</option>
+          </select>
+          <input id="log_titulo" placeholder="Título (ex: Falei com o dono)">
+        </div>
+        <div style="margin-top:10px">
+          <textarea id="log_desc" rows="3" placeholder="Descrição"></textarea>
+        </div>
+        <div style="margin-top:10px">
+          <button class="btn" id="btnAddLog">Adicionar na timeline</button>
+        </div>
+
+        <div id="logs" style="margin-top:14px;display:grid;gap:10px"></div>
+        <div id="logsEmpty" class="muted" style="margin-top:10px">Carregando…</div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script type="module">
+    import { sb } from "./assets/supabaseClient.js";
+    import { ensureProfile, toast, humanError } from "./assets/app.js";
+
+    const qs = new URLSearchParams(location.search);
+    const id = qs.get("id");
+
+    const subtitle = document.getElementById("subtitle");
+    const btnSave = document.getElementById("btnSave");
+    const btnConcluir = document.getElementById("btnConcluir");
+    const btnGerarFicha = document.getElementById("btnGerarFicha");
+
+    const fields = [
+      "nome_comercio","cnpj","segmento","telefone",
+      "contato_nome","contato_email","uf","cidade",
+      "taxa_adm","prazo_pgto","observacao","status"
+    ];
+
+    const logTipo = document.getElementById("log_tipo");
+    const logTitulo = document.getElementById("log_titulo");
+    const logDesc = document.getElementById("log_desc");
+    const btnAddLog = document.getElementById("btnAddLog");
+    const logs = document.getElementById("logs");
+    const logsEmpty = document.getElementById("logsEmpty");
+
+    let ctx, user, prof;
+    let current = null;
+
+    function getPayload(){
+      const payload = {};
+      for (const f of fields) payload[f] = (document.getElementById(f).value || "").trim();
+      payload.uf = payload.uf ? payload.uf.toUpperCase() : null;
+      if (!payload.nome_comercio) throw new Error("Informe o nome do comércio.");
+      return payload;
+    }
+
+    async function loadNegotiacao(){
+      if (!id) {
+        subtitle.textContent = "Nova negociação";
+        logsEmpty.textContent = "Ainda não tem timeline. Salve a negociação primeiro.";
+        btnGerarFicha.style.display = "none";
+        return;
+      }
+
+      subtitle.textContent = "Carregando negociação…";
+
+      const { data, error } = await sb
+        .from("negociacoes")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error) throw error;
+
+      current = data;
+
+      for (const f of fields) {
+        const el = document.getElementById(f);
+        el.value = (data[f] ?? "");
+      }
+
+      subtitle.textContent = `${data.nome_comercio} • ${data.status}`;
+
+      if (data.status === "concluida") {
+        btnGerarFicha.style.display = "inline-flex";
+      }
+
+      await loadLogs();
+    }
+
+    function logCard(l){
+      const dt = new Date(l.created_at).toLocaleString("pt-BR");
+      return `
+        <div style="padding:12px;border-radius:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+          <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div>
+              <div style="font-weight:700">${(l.tipo || "nota").toUpperCase()} • ${l.titulo || "—"}</div>
+              <div class="muted" style="margin-top:4px">${dt}</div>
+            </div>
+          </div>
+          ${l.descricao ? `<div style="margin-top:10px;white-space:pre-wrap">${l.descricao}</div>` : ""}
+        </div>
+      `;
+    }
+
+    async function loadLogs(){
+      logsEmpty.textContent = "Carregando timeline…";
+      logs.innerHTML = "";
+
+      const { data, error } = await sb
+        .from("action_logs")
+        .select("id,tipo,titulo,descricao,created_at")
+        .eq("negociacao_id", id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      if (!data || !data.length) {
+        logsEmpty.textContent = "Sem registros ainda.";
+        return;
+      }
+
+      logsEmpty.style.display = "none";
+      logs.innerHTML = data.map(logCard).join("");
+    }
+
+    async function saveNegotiacao(forceStatus){
+      try{
+        const payload = getPayload();
+        if (forceStatus) payload.status = forceStatus;
+
+        if (!id) {
+          // cria
+          const { data, error } = await sb
+            .from("negociacoes")
+            .insert({
+              ...payload,
+              created_by: user.id,
+              assigned_to: user.id
+            })
+            .select("id,status,nome_comercio")
+            .single();
+
+          if (error) throw error;
+
+          toast("Negociação criada ✅");
+          location.href = `negociacao.html?id=${data.id}`;
+          return;
+        }
+
+        // atualiza
+        const { error } = await sb
+          .from("negociacoes")
+          .update(payload)
+          .eq("id", id);
+
+        if (error) throw error;
+
+        // loga status se mudou
+        if (forceStatus) {
+          await sb.from("action_logs").insert({
+            negociacao_id: id,
+            created_by: user.id,
+            tipo: "status",
+            titulo: `Status alterado para: ${forceStatus}`,
+            descricao: ""
+          });
+        }
+
+        toast("Salvo ✅");
+        await loadNegotiacao();
+      } catch(err){
+        console.error(err);
+        toast(humanError(err));
+      }
+    }
+
+    btnSave.addEventListener("click", () => saveNegotiacao());
+    btnConcluir.addEventListener("click", () => saveNegotiacao("concluida"));
+
+    btnAddLog.addEventListener("click", async () => {
+      if (!id) {
+        toast("Salve a negociação primeiro.");
+        return;
+      }
+
+      try {
+        const payload = {
+          negociacao_id: id,
+          created_by: user.id,
+          tipo: logTipo.value,
+          titulo: (logTitulo.value || "").trim(),
+          descricao: (logDesc.value || "").trim(),
+        };
+
+        if (!payload.titulo && !payload.descricao) {
+          toast("Escreve um título ou uma descrição pra registrar 😅");
+          return;
+        }
+
+        const { error } = await sb.from("action_logs").insert(payload);
+        if (error) throw error;
+
+        logTitulo.value = "";
+        logDesc.value = "";
+        toast("Adicionado na timeline ✅");
+        await loadLogs();
+      } catch (err) {
+        console.error(err);
+        toast(humanError(err));
+      }
+    });
+
+    btnGerarFicha.addEventListener("click", async () => {
+      if (!id) return;
+
+      try {
+        // já existe ficha?
+        const { data: existing, error: e1 } = await sb
+          .from("fichas_credenciamento")
+          .select("id")
+          .eq("negociacao_id", id)
+          .maybeSingle();
+
+        if (!e1 && existing?.id) {
+          location.href = `ficha.html?id=${existing.id}`;
+          return;
+        }
+
+        // cria ficha a partir da negociação
+        const payload = getPayload();
+
+        const { data: ficha, error } = await sb
+          .from("fichas_credenciamento")
+          .insert({
+            negociacao_id: id,
+            created_by: user.id,
+            status: "rascunho",
+            nome_comercio: payload.nome_comercio,
+            cnpj: payload.cnpj,
+            segmento: payload.segmento,
+            telefone: payload.telefone,
+            contato_nome: payload.contato_nome,
+            contato_email: payload.contato_email,
+            uf: payload.uf,
+            cidade: payload.cidade,
+            observacao: payload.observacao
+          })
+          .select("id")
+          .single();
+
+        if (error) throw error;
+
+        toast("Ficha criada ✅");
+        location.href = `ficha.html?id=${ficha.id}`;
+      } catch (err) {
+        console.error(err);
+        toast(humanError(err));
+      }
+    });
+
+    (async function init(){
+      ctx = await ensureProfile();
+      user = ctx.user;
+      prof = ctx.prof;
+      await loadNegotiacao();
+    })().catch(err => {
+      console.error(err);
+      toast("Falha ao carregar. Veja o console (F12).");
+    });
+  </script>
+</body>
+</html>
 
