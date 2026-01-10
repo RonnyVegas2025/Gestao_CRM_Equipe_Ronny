@@ -1,1 +1,91 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <title>Redefinir senha • CRM Ronny</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+
+  <div class="login-box">
+    <h1>Nova senha</h1>
+    <p class="muted">Crie uma senha nova pra sua conta.</p>
+
+    <input id="newpass" type="password" placeholder="Nova senha (mín. 6)">
+    <input id="newpass2" type="password" placeholder="Confirmar nova senha">
+
+    <button id="btnSave">Salvar nova senha</button>
+
+    <p class="small muted" style="margin-top:12px">
+      Se cair aqui sem token, peça “esqueci minha senha” de novo.
+    </p>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script type="module">
+    import { sb } from "./assets/supabaseClient.js";
+    import { toast } from "./assets/app.js";
+
+    // IMPORTANTE:
+    // Quando você clica no link do e-mail, o Supabase redireciona para:
+    // reset.html#access_token=...&refresh_token=...&type=recovery
+    // Precisamos capturar isso e "setar" a sessão no navegador.
+
+    async function initRecoverySession() {
+      const hash = location.hash || "";
+      const params = new URLSearchParams(hash.replace("#", ""));
+
+      const access_token = params.get("access_token");
+      const refresh_token = params.get("refresh_token");
+      const type = params.get("type");
+
+      if (!access_token || !refresh_token || type !== "recovery") {
+        // Sem token, manda pro login
+        toast("Link inválido ou expirado. Solicite novamente.");
+        setTimeout(() => (location.href = "index.html"), 2000);
+        return false;
+      }
+
+      const { error } = await sb.auth.setSession({ access_token, refresh_token });
+      if (error) {
+        console.error(error);
+        toast("Não consegui validar o link. Solicite novamente.");
+        setTimeout(() => (location.href = "index.html"), 2500);
+        return false;
+      }
+
+      return true;
+    }
+
+    const ok = await initRecoverySession();
+    if (!ok) throw new Error("recovery_session_failed");
+
+    document.getElementById("btnSave").onclick = async () => {
+      const p1 = document.getElementById("newpass").value;
+      const p2 = document.getElementById("newpass2").value;
+
+      if (!p1 || p1.length < 6) {
+        toast("A senha precisa ter pelo menos 6 caracteres.");
+        return;
+      }
+      if (p1 !== p2) {
+        toast("As senhas não conferem.");
+        return;
+      }
+
+      const { error } = await sb.auth.updateUser({ password: p1 });
+      if (error) {
+        console.error(error);
+        toast(error.message || "Erro ao salvar senha.");
+        return;
+      }
+
+      toast("Senha alterada! Indo pro login…");
+      setTimeout(() => (location.href = "index.html"), 1500);
+    };
+  </script>
+</body>
+</html>
 
