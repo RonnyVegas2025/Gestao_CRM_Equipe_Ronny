@@ -1,1 +1,150 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <title>Ficha • Credenciamento</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
+      <div>
+        <h1 style="margin:0">Ficha de Credenciamento</h1>
+        <div id="subtitle" class="muted">Carregando…</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <a class="btn" href="dashboard.html">← Voltar</a>
+        <button class="btn" id="btnSave">Salvar</button>
+      </div>
+    </header>
+
+    <main style="margin-top:18px;display:grid;gap:16px;max-width:1100px">
+      <section class="card">
+        <h2 style="margin:0 0 10px 0">Dados principais</h2>
+
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+          <input id="nome_comercio" placeholder="Nome do comércio *">
+          <input id="cnpj" placeholder="CNPJ">
+
+          <input id="segmento" placeholder="Segmento">
+          <input id="telefone" placeholder="Telefone">
+
+          <input id="contato_nome" placeholder="Nome do contato">
+          <input id="contato_email" placeholder="E-mail do contato">
+
+          <input id="uf" placeholder="UF" maxlength="2">
+          <input id="cidade" placeholder="Cidade">
+        </div>
+
+        <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <label class="muted">Status:</label>
+          <select id="status">
+            <option value="rascunho">Rascunho</option>
+            <option value="enviada">Enviada</option>
+            <option value="em_analise">Em análise</option>
+            <option value="aprovada">Aprovada</option>
+            <option value="devolvida">Devolvida</option>
+            <option value="concluida">Concluída</option>
+            <option value="cancelada">Cancelada</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 style="margin:0 0 10px 0">Endereço</h2>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+          <input id="endereco" placeholder="Rua / Avenida">
+          <input id="numero" placeholder="Número">
+
+          <input id="bairro" placeholder="Bairro">
+          <input id="cep" placeholder="CEP">
+
+          <input id="complemento" placeholder="Complemento">
+          <div></div>
+        </div>
+
+        <div style="margin-top:10px">
+          <textarea id="observacao" rows="3" placeholder="Observações"></textarea>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script type="module">
+    import { sb } from "./assets/supabaseClient.js";
+    import { ensureProfile, toast, humanError } from "./assets/app.js";
+
+    const qs = new URLSearchParams(location.search);
+    const id = qs.get("id");
+    const subtitle = document.getElementById("subtitle");
+    const btnSave = document.getElementById("btnSave");
+
+    const fields = [
+      "status","nome_comercio","cnpj","segmento","telefone",
+      "contato_nome","contato_email","uf","cidade",
+      "endereco","numero","bairro","cep","complemento","observacao"
+    ];
+
+    function setForm(data){
+      fields.forEach(f => document.getElementById(f).value = (data[f] ?? ""));
+    }
+
+    function getPayload(){
+      const payload = {};
+      fields.forEach(f => payload[f] = (document.getElementById(f).value || "").trim());
+      payload.uf = payload.uf ? payload.uf.toUpperCase() : null;
+      if (!payload.nome_comercio) throw new Error("Informe o nome do comércio.");
+      return payload;
+    }
+
+    async function loadFicha(){
+      if (!id) {
+        subtitle.textContent = "Sem ID de ficha.";
+        toast("Faltou o id da ficha na URL.");
+        return;
+      }
+
+      const { data, error } = await sb
+        .from("fichas_credenciamento")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error) throw error;
+
+      subtitle.textContent = `${data.nome_comercio} • ${data.status}`;
+      setForm(data);
+    }
+
+    btnSave.addEventListener("click", async () => {
+      try {
+        const payload = getPayload();
+        const { error } = await sb
+          .from("fichas_credenciamento")
+          .update(payload)
+          .eq("id", id);
+
+        if (error) throw error;
+
+        toast("Ficha salva ✅");
+        await loadFicha();
+      } catch (err) {
+        console.error(err);
+        toast(humanError(err));
+      }
+    });
+
+    (async function init(){
+      await ensureProfile();
+      await loadFicha();
+    })().catch(err => {
+      console.error(err);
+      toast("Falha ao carregar. Veja o console (F12).");
+    });
+  </script>
+</body>
+</html>
 
