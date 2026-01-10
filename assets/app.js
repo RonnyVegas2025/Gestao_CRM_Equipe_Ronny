@@ -28,7 +28,8 @@ export async function requireAuth() {
 
 /**
  * Lê o perfil do usuário em profiles2.
- * IMPORTANTE: no seu banco a coluna é "papel" (não "role").
+ * OBS: no seu banco tem coluna "e-mail" com hífen.
+ * Pra evitar 400, NÃO vamos selecionar e-mail aqui.
  */
 export async function getProfile() {
   const user = await requireAuth();
@@ -36,7 +37,7 @@ export async function getProfile() {
 
   const { data: profile, error } = await sb
     .from("profiles2")
-    .select("id,nome,papel,email")
+    .select("id,nome,papel")
     .eq("id", user.id)
     .single();
 
@@ -48,7 +49,7 @@ export async function getProfile() {
   return { user, profile };
 }
 
-// compat: se algum arquivo antigo chamar ensureProfile, funciona igual
+// compat: se algum arquivo chamar ensureProfile, funciona igual
 export const ensureProfile = getProfile;
 
 /** ADM/Gestor? (baseado no profiles2.papel) */
