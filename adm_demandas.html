@@ -193,10 +193,10 @@
     try {
       const { user, profile } = await getProfile();
 
-      document.getElementById("who").textContent = `${user.email} • ${profile.role}`;
+      document.getElementById("who").textContent = `${user.email} • ${profile.papel}`;
       document.getElementById("btnLogout").onclick = logout;
 
-      if(!isAdminRole(profile.role)){
+      if(!isAdminRole(profile.papel)){
         toast("Sem acesso. Essa tela é só para ADM/Gestor.");
         setTimeout(()=> location.href="dashboard.html", 900);
         throw new Error("no_access");
