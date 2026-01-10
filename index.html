@@ -19,6 +19,7 @@
       <button id="btnLogin">Entrar</button>
 
       <a href="#" id="btnForgot" class="link">Esqueci minha senha</a>
+      <p class="small muted" id="forgotInfo" style="display:none;margin-top:10px"></p>
     </div>
 
     <!-- RESET SENHA -->
@@ -50,6 +51,8 @@
     const btnLogin = document.getElementById("btnLogin");
     const btnForgot= document.getElementById("btnForgot");
 
+    const forgotInfo = document.getElementById("forgotInfo");
+
     const resetMsg = document.getElementById("resetMsg");
     const newpass  = document.getElementById("newpass");
     const newpass2 = document.getElementById("newpass2");
@@ -68,7 +71,7 @@
       resetMsg.textContent = message || "Pronto! Crie sua nova senha.";
     }
 
-    // 1) LOGIN
+    // LOGIN
     btnLogin.addEventListener("click", async () => {
       const email = emailEl.value.trim();
       const password = passEl.value;
@@ -81,40 +84,50 @@
       const { error } = await sb.auth.signInWithPassword({ email, password });
 
       if (error) {
-        console.error(error);
+        console.error("LOGIN ERROR:", error);
         toast("Login inválido ou usuário sem acesso.");
       } else {
         location.href = "dashboard.html";
       }
     });
 
-    // 2) ESQUECI MINHA SENHA (manda email pelo próprio site)
+    // ESQUECI MINHA SENHA (manda e-mail)
     btnForgot.addEventListener("click", async (e) => {
       e.preventDefault();
 
+      forgotInfo.style.display = "block";
+      forgotInfo.textContent = "";
+
       const email = emailEl.value.trim();
       if(!email){
+        forgotInfo.textContent = "Digite seu e-mail acima e clique de novo.";
         toast("Digite seu e-mail primeiro 🙂");
         return;
       }
 
-      // redirect para o próprio index (aqui mesmo a gente trata o reset)
-      const redirectTo = `${location.origin}${location.pathname.replace(/\/[^\/]*$/, "")}/index.html`;
+      // redirect volta para o index mesmo (aqui tratamos reset)
+      const basePath = location.pathname.replace(/\/[^\/]*$/, "");
+      const redirectTo = `${location.origin}${basePath}/index.html`;
+
+      forgotInfo.textContent = "Enviando e-mail de redefinição…";
 
       const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo });
 
       if(error){
-        console.error(error);
-        toast(error.message || "Não consegui enviar o e-mail de reset.");
+        console.error("RESET EMAIL ERROR:", error);
+        forgotInfo.textContent = "Não consegui enviar o e-mail. Veja o console (F12).";
+        toast(error.message || "Erro ao enviar reset.");
         return;
       }
 
-      toast("Enviei o e-mail de redefinição. Confere a caixa de entrada.");
+      // ✅ Confirmação VISÍVEL (não depende do toast)
+      forgotInfo.innerHTML =
+        `✅ E-mail enviado! Agora abre sua caixa de entrada (e o SPAM) e clique no link.<br>` +
+        `<span class="small muted">Se não chegar em 1–2 min, o usuário pode não existir no Auth.</span>`;
+      toast("E-mail de redefinição enviado ✅");
     });
 
-    // 3) Ao voltar do e-mail, o Supabase pode trazer:
-    // - ?code=... (modo novo)
-    // - #access_token=... (modo antigo)
+    // Ao voltar do e-mail:
     async function initRecoveryIfAny(){
       const url = new URL(location.href);
       const code = url.searchParams.get("code");
@@ -123,7 +136,7 @@
         showReset("Validando link…");
         const { error } = await sb.auth.exchangeCodeForSession(code);
         if(error){
-          console.error(error);
+          console.error("EXCHANGE CODE ERROR:", error);
           toast("Link inválido/expirado. Solicite novamente.");
           showLogin();
           return;
@@ -142,7 +155,7 @@
         showReset("Validando link…");
         const { error } = await sb.auth.setSession({ access_token, refresh_token });
         if(error){
-          console.error(error);
+          console.error("SET SESSION ERROR:", error);
           toast("Link inválido/expirado. Solicite novamente.");
           showLogin();
           return;
@@ -151,7 +164,7 @@
       }
     }
 
-    // 4) salvar nova senha
+    // salvar nova senha
     btnSave.addEventListener("click", async () => {
       const p1 = newpass.value;
       const p2 = newpass2.value;
@@ -167,21 +180,18 @@
 
       const { error } = await sb.auth.updateUser({ password: p1 });
       if(error){
-        console.error(error);
+        console.error("UPDATE PASSWORD ERROR:", error);
         toast(error.message || "Erro ao salvar senha.");
         return;
       }
 
-      toast("Senha alterada! Agora entra com a nova senha 😄");
-
-      // limpa URL de recovery
+      toast("Senha alterada! Agora entra com a nova 😄");
       setTimeout(() => {
         history.replaceState({}, document.title, "index.html");
         showLogin();
       }, 1200);
     });
 
-    // inicia tratamento do recovery se tiver
     await initRecoveryIfAny();
   </script>
 </body>
