@@ -7,65 +7,91 @@
   <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
-  <div class="wrap">
-    <header class="topbar" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
-      <div>
-        <h1 style="margin:0">Negociação</h1>
-        <div id="subtitle" class="muted">Carregando…</div>
+
+  <header class="top">
+    <div>
+      <h1>Negociação • Credenciamento</h1>
+      <div class="muted" id="sub">Carregando…</div>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:center">
+      <a class="btn-ghost" href="dashboard.html">Voltar</a>
+      <button id="btnLogout" class="btn-ghost">Sair</button>
+    </div>
+  </header>
+
+  <main class="wrap" style="display:grid;gap:16px;grid-template-columns: 1fr 1fr; align-items:start">
+
+    <section class="card">
+      <h2>📌 Dados da negociação</h2>
+
+      <div class="grid2">
+        <div>
+          <label class="lbl">Nome do comércio</label>
+          <input id="nome_comercio" placeholder="Ex: Padaria do Zé">
+        </div>
+        <div>
+          <label class="lbl">CNPJ (opcional)</label>
+          <input id="cnpj" placeholder="00.000.000/0000-00">
+        </div>
+
+        <div>
+          <label class="lbl">Segmento</label>
+          <input id="segmento" placeholder="Ex: Alimentação">
+        </div>
+        <div>
+          <label class="lbl">Telefone</label>
+          <input id="telefone" placeholder="(xx) xxxxx-xxxx">
+        </div>
+
+        <div>
+          <label class="lbl">Contato</label>
+          <input id="contato_nome" placeholder="Nome do responsável">
+        </div>
+        <div>
+          <label class="lbl">E-mail do contato</label>
+          <input id="contato_email" placeholder="email@comercio.com">
+        </div>
+
+        <div>
+          <label class="lbl">UF</label>
+          <input id="uf" placeholder="SP" maxlength="2">
+        </div>
+        <div>
+          <label class="lbl">Cidade</label>
+          <input id="cidade" placeholder="Americana">
+        </div>
+
+        <div>
+          <label class="lbl">Taxa adm (resumo)</label>
+          <input id="taxa_adm" placeholder="Ex: 3,20%">
+        </div>
+        <div>
+          <label class="lbl">Prazo pgto (resumo)</label>
+          <input id="prazo_pgto" placeholder="Ex: dia 25">
+        </div>
       </div>
-      <div style="display:flex;gap:10px;align-items:center">
-        <a class="btn" href="dashboard.html">← Voltar</a>
-        <button class="btn" id="btnSave">Salvar</button>
-        <button class="btn" id="btnConcluir">Concluir</button>
-        <button class="btn" id="btnGerarFicha" style="display:none">Gerar ficha</button>
+
+      <div style="margin-top:10px">
+        <label class="lbl">Observação</label>
+        <textarea id="observacao" rows="4" placeholder="Contexto, argumentos, detalhes…"></textarea>
       </div>
-    </header>
 
-    <main style="margin-top:18px;display:grid;gap:16px;max-width:1100px">
-      <section class="card">
-        <h2 style="margin:0 0 10px 0">Dados do comércio</h2>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+        <button id="btnSave" class="btn">Salvar</button>
+        <button id="btnConcluir" class="btn">Concluir negociação</button>
+        <button id="btnFicha" class="btn" disabled title="Só libera quando concluir">Gerar ficha</button>
+      </div>
 
-        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
-          <input id="nome_comercio" placeholder="Nome do comércio *">
-          <input id="cnpj" placeholder="CNPJ (opcional)">
+      <div class="muted small" style="margin-top:10px" id="statusInfo">—</div>
+    </section>
 
-          <input id="segmento" placeholder="Segmento">
-          <input id="telefone" placeholder="Telefone">
+    <section class="card">
+      <h2>🕒 Timeline</h2>
 
-          <input id="contato_nome" placeholder="Nome do contato">
-          <input id="contato_email" placeholder="E-mail do contato">
-
-          <input id="uf" placeholder="UF (ex: SP)" maxlength="2">
-          <input id="cidade" placeholder="Cidade">
-        </div>
-
-        <div style="margin-top:10px">
-          <textarea id="observacao" rows="3" placeholder="Observações / contexto"></textarea>
-        </div>
-      </section>
-
-      <section class="card">
-        <h2 style="margin:0 0 10px 0">Acordo comercial</h2>
-        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
-          <input id="taxa_adm" placeholder="Taxa ADM (ex: 3,20%)">
-          <input id="prazo_pgto" placeholder="Prazo de pagamento (ex: dia 25 / dia 15)">
-        </div>
-
-        <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <label class="muted">Status:</label>
-          <select id="status">
-            <option value="em_negociacao">Em negociação</option>
-            <option value="pendente">Pendente</option>
-            <option value="concluida">Concluída</option>
-            <option value="cancelada">Cancelada</option>
-          </select>
-        </div>
-      </section>
-
-      <section class="card">
-        <h2 style="margin:0 0 10px 0">Timeline</h2>
-
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <div class="grid2">
+        <div>
+          <label class="lbl">Tipo</label>
           <select id="log_tipo">
             <option value="nota">Nota</option>
             <option value="ligacao">Ligação</option>
@@ -74,70 +100,247 @@
             <option value="email">E-mail</option>
             <option value="status">Status</option>
           </select>
-          <input id="log_titulo" placeholder="Título (ex: Falei com o dono)">
         </div>
-        <div style="margin-top:10px">
-          <textarea id="log_desc" rows="3" placeholder="Descrição"></textarea>
+        <div>
+          <label class="lbl">Título</label>
+          <input id="log_titulo" placeholder="Ex: Cliente pediu retorno amanhã">
         </div>
-        <div style="margin-top:10px">
-          <button class="btn" id="btnAddLog">Adicionar na timeline</button>
-        </div>
+      </div>
 
-        <div id="logs" style="margin-top:14px;display:grid;gap:10px"></div>
-        <div id="logsEmpty" class="muted" style="margin-top:10px">Carregando…</div>
-      </section>
-    </main>
-  </div>
+      <div style="margin-top:10px">
+        <label class="lbl">Descrição</label>
+        <textarea id="log_desc" rows="3" placeholder="Detalhes…"></textarea>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+        <button id="btnAddLog" class="btn">Adicionar na timeline</button>
+      </div>
+
+      <hr style="margin:16px 0; opacity:.25">
+
+      <div id="logs" class="list">Carregando…</div>
+    </section>
+
+  </main>
 
   <div class="toast" id="toast"></div>
 
   <script type="module">
     import { sb } from "./assets/supabaseClient.js";
-    import { ensureProfile, toast, humanError } from "./assets/app.js";
+    import { getProfile, logout, toast, q } from "./assets/app.js";
 
-    const qs = new URLSearchParams(location.search);
-    const id = qs.get("id");
+    const id = q("id"); // se existir, edita; se não, cria
 
-    const subtitle = document.getElementById("subtitle");
-    const btnSave = document.getElementById("btnSave");
-    const btnConcluir = document.getElementById("btnConcluir");
-    const btnGerarFicha = document.getElementById("btnGerarFicha");
+    const sub = document.getElementById("sub");
+    const logsEl = document.getElementById("logs");
+    const statusInfo = document.getElementById("statusInfo");
 
     const fields = [
       "nome_comercio","cnpj","segmento","telefone",
       "contato_nome","contato_email","uf","cidade",
-      "taxa_adm","prazo_pgto","observacao","status"
+      "taxa_adm","prazo_pgto","observacao"
     ];
 
-    const logTipo = document.getElementById("log_tipo");
-    const logTitulo = document.getElementById("log_titulo");
-    const logDesc = document.getElementById("log_desc");
-    const btnAddLog = document.getElementById("btnAddLog");
-    const logs = document.getElementById("logs");
-    const logsEmpty = document.getElementById("logsEmpty");
-
-    let ctx, user, prof;
-    let current = null;
-
     function getPayload(){
-      const payload = {};
-      for (const f of fields) payload[f] = (document.getElementById(f).value || "").trim();
-      payload.uf = payload.uf ? payload.uf.toUpperCase() : null;
-      if (!payload.nome_comercio) throw new Error("Informe o nome do comércio.");
-      return payload;
+      const p = {};
+      fields.forEach(k => p[k] = (document.getElementById(k).value || "").trim());
+      // normalize UF
+      if (p.uf) p.uf = p.uf.toUpperCase().slice(0,2);
+      return p;
     }
 
-    async function loadNegotiacao(){
-      if (!id) {
-        subtitle.textContent = "Nova negociação";
-        logsEmpty.textContent = "Ainda não tem timeline. Salve a negociação primeiro.";
-        btnGerarFicha.style.display = "none";
+    function setForm(data){
+      fields.forEach(k => {
+        const el = document.getElementById(k);
+        el.value = data?.[k] ?? "";
+      });
+    }
+
+    function logItemHTML(x){
+      const dt = new Date(x.created_at);
+      const when = dt.toLocaleString("pt-BR");
+      return `
+        <div class="item">
+          <div class="row">
+            <b>${x.titulo || "(sem título)"}</b>
+            <span class="badge">${x.tipo}</span>
+          </div>
+          ${x.descricao ? `<div class="small" style="margin-top:6px">${x.descricao}</div>` : ""}
+          <div class="muted small" style="margin-top:8px">${when}</div>
+        </div>
+      `;
+    }
+
+    async function loadLogs(negId){
+      const { data, error } = await sb
+        .from("action_logs")
+        .select("id,tipo,titulo,descricao,created_at")
+        .eq("negociacao_id", negId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      logsEl.innerHTML = (data || []).length
+        ? data.map(logItemHTML).join("")
+        : `<div class="muted"><i>Sem registros ainda. Começa com uma nota 😉</i></div>`;
+    }
+
+    async function createNegociacao(user){
+      const payload = getPayload();
+      if(!payload.nome_comercio){
+        toast("Coloca pelo menos o nome do comércio 🙂");
+        throw new Error("nome_comercio_required");
+      }
+
+      payload.created_by = user.id;
+      payload.assigned_to = user.id;
+      payload.status = "em_negociacao";
+
+      const { data, error } = await sb
+        .from("negociacoes")
+        .insert(payload)
+        .select("*")
+        .single();
+
+      if (error) throw error;
+
+      // log inicial
+      await sb.from("action_logs").insert({
+        negociacao_id: data.id,
+        created_by: user.id,
+        tipo: "sistema",
+        titulo: "Negociação criada",
+        descricao: "Registro inicial da negociação."
+      });
+
+      toast("Negociação criada ✅");
+      location.href = `negociacao.html?id=${data.id}`;
+    }
+
+    async function saveNegociacao(negId){
+      const payload = getPayload();
+      if(!payload.nome_comercio){
+        toast("Coloca pelo menos o nome do comércio 🙂");
+        return;
+      }
+      const { error } = await sb
+        .from("negociacoes")
+        .update(payload)
+        .eq("id", negId);
+
+      if (error) throw error;
+
+      toast("Salvo ✅");
+    }
+
+    async function concluirNegociacao(user, neg){
+      if(neg.status === "concluida"){
+        toast("Essa negociação já está concluída.");
         return;
       }
 
-      subtitle.textContent = "Carregando negociação…";
+      const { error } = await sb
+        .from("negociacoes")
+        .update({ status: "concluida" })
+        .eq("id", neg.id);
+
+      if (error) throw error;
+
+      await sb.from("action_logs").insert({
+        negociacao_id: neg.id,
+        created_by: user.id,
+        tipo: "status",
+        titulo: "Negociação concluída",
+        descricao: "Status alterado para concluída."
+      });
+
+      toast("Negociação concluída ✅ Agora pode gerar ficha.");
+      await boot(user); // recarrega tela
+    }
+
+    async function gerarFicha(user, neg){
+      if(neg.status !== "concluida"){
+        toast("Conclua a negociação primeiro 🙂");
+        return;
+      }
+
+      // cria ficha puxando infos
+      const payload = {
+        negociacao_id: neg.id,
+        created_by: user.id,
+        status: "rascunho",
+        nome_comercio: neg.nome_comercio,
+        cnpj: neg.cnpj,
+        segmento: neg.segmento,
+        telefone: neg.telefone,
+        contato_nome: neg.contato_nome,
+        contato_email: neg.contato_email,
+        uf: neg.uf,
+        cidade: neg.cidade,
+        observacao: neg.observacao
+      };
 
       const { data, error } = await sb
+        .from("fichas_credenciamento")
+        .insert(payload)
+        .select("id")
+        .single();
+
+      if (error) throw error;
+
+      await sb.from("action_logs").insert({
+        negociacao_id: neg.id,
+        created_by: user.id,
+        tipo: "sistema",
+        titulo: "Ficha gerada",
+        descricao: `Ficha criada (ID: ${data.id}).`
+      });
+
+      toast("Ficha gerada ✅ (vamos criar a tela dela no próximo passo)");
+      // depois fazemos ficha.html?id=...
+    }
+
+    async function addLog(user, negId){
+      const tipo = document.getElementById("log_tipo").value;
+      const titulo = document.getElementById("log_titulo").value.trim();
+      const descricao = document.getElementById("log_desc").value.trim();
+
+      if(!titulo && !descricao){
+        toast("Escreve um título ou uma descrição 🙂");
+        return;
+      }
+
+      const { error } = await sb.from("action_logs").insert({
+        negociacao_id: negId,
+        created_by: user.id,
+        tipo,
+        titulo: titulo || "(sem título)",
+        descricao
+      });
+
+      if (error) throw error;
+
+      document.getElementById("log_titulo").value = "";
+      document.getElementById("log_desc").value = "";
+      toast("Adicionado na timeline ✅");
+      await loadLogs(negId);
+    }
+
+    async function boot(user){
+      if(!id){
+        sub.textContent = "Nova negociação (ainda não salva)";
+        statusInfo.textContent = "Preencha e clique em “Salvar” para criar.";
+        logsEl.innerHTML = `<div class="muted"><i>Salve a negociação para liberar a timeline.</i></div>`;
+
+        document.getElementById("btnSave").onclick = () => createNegociacao(user);
+        document.getElementById("btnConcluir").disabled = true;
+        document.getElementById("btnFicha").disabled = true;
+        document.getElementById("btnAddLog").disabled = true;
+        return;
+      }
+
+      // carrega negociação
+      const { data: neg, error } = await sb
         .from("negociacoes")
         .select("*")
         .eq("id", id)
@@ -145,203 +348,47 @@
 
       if (error) throw error;
 
-      current = data;
+      sub.textContent = `${neg.nome_comercio} • ${neg.status}`;
+      setForm(neg);
 
-      for (const f of fields) {
-        const el = document.getElementById(f);
-        el.value = (data[f] ?? "");
-      }
+      statusInfo.textContent = neg.status === "concluida"
+        ? "Status: concluída. Você pode gerar a ficha."
+        : "Status: em negociação. Conclua quando fechar com o cliente.";
 
-      subtitle.textContent = `${data.nome_comercio} • ${data.status}`;
+      document.getElementById("btnSave").onclick = async () => {
+        try { await saveNegociacao(neg.id); }
+        catch(e){ console.error(e); toast("Erro ao salvar. Veja o console (F12)."); }
+      };
 
-      if (data.status === "concluida") {
-        btnGerarFicha.style.display = "inline-flex";
-      }
+      document.getElementById("btnConcluir").onclick = async () => {
+        try { await concluirNegociacao(user, neg); }
+        catch(e){ console.error(e); toast("Erro ao concluir. Veja o console (F12)."); }
+      };
 
-      await loadLogs();
+      const btnFicha = document.getElementById("btnFicha");
+      btnFicha.disabled = (neg.status !== "concluida");
+      btnFicha.onclick = async () => {
+        try { await gerarFicha(user, neg); }
+        catch(e){ console.error(e); toast("Erro ao gerar ficha. Veja o console (F12)."); }
+      };
+
+      document.getElementById("btnAddLog").disabled = false;
+      document.getElementById("btnAddLog").onclick = async () => {
+        try { await addLog(user, neg.id); }
+        catch(e){ console.error(e); toast("Erro ao adicionar log. Veja o console (F12)."); }
+      };
+
+      await loadLogs(neg.id);
     }
 
-    function logCard(l){
-      const dt = new Date(l.created_at).toLocaleString("pt-BR");
-      return `
-        <div style="padding:12px;border-radius:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
-          <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
-            <div>
-              <div style="font-weight:700">${(l.tipo || "nota").toUpperCase()} • ${l.titulo || "—"}</div>
-              <div class="muted" style="margin-top:4px">${dt}</div>
-            </div>
-          </div>
-          ${l.descricao ? `<div style="margin-top:10px;white-space:pre-wrap">${l.descricao}</div>` : ""}
-        </div>
-      `;
-    }
-
-    async function loadLogs(){
-      logsEmpty.textContent = "Carregando timeline…";
-      logs.innerHTML = "";
-
-      const { data, error } = await sb
-        .from("action_logs")
-        .select("id,tipo,titulo,descricao,created_at")
-        .eq("negociacao_id", id)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      if (!data || !data.length) {
-        logsEmpty.textContent = "Sem registros ainda.";
-        return;
-      }
-
-      logsEmpty.style.display = "none";
-      logs.innerHTML = data.map(logCard).join("");
-    }
-
-    async function saveNegotiacao(forceStatus){
-      try{
-        const payload = getPayload();
-        if (forceStatus) payload.status = forceStatus;
-
-        if (!id) {
-          // cria
-          const { data, error } = await sb
-            .from("negociacoes")
-            .insert({
-              ...payload,
-              created_by: user.id,
-              assigned_to: user.id
-            })
-            .select("id,status,nome_comercio")
-            .single();
-
-          if (error) throw error;
-
-          toast("Negociação criada ✅");
-          location.href = `negociacao.html?id=${data.id}`;
-          return;
-        }
-
-        // atualiza
-        const { error } = await sb
-          .from("negociacoes")
-          .update(payload)
-          .eq("id", id);
-
-        if (error) throw error;
-
-        // loga status se mudou
-        if (forceStatus) {
-          await sb.from("action_logs").insert({
-            negociacao_id: id,
-            created_by: user.id,
-            tipo: "status",
-            titulo: `Status alterado para: ${forceStatus}`,
-            descricao: ""
-          });
-        }
-
-        toast("Salvo ✅");
-        await loadNegotiacao();
-      } catch(err){
-        console.error(err);
-        toast(humanError(err));
-      }
-    }
-
-    btnSave.addEventListener("click", () => saveNegotiacao());
-    btnConcluir.addEventListener("click", () => saveNegotiacao("concluida"));
-
-    btnAddLog.addEventListener("click", async () => {
-      if (!id) {
-        toast("Salve a negociação primeiro.");
-        return;
-      }
-
-      try {
-        const payload = {
-          negociacao_id: id,
-          created_by: user.id,
-          tipo: logTipo.value,
-          titulo: (logTitulo.value || "").trim(),
-          descricao: (logDesc.value || "").trim(),
-        };
-
-        if (!payload.titulo && !payload.descricao) {
-          toast("Escreve um título ou uma descrição pra registrar 😅");
-          return;
-        }
-
-        const { error } = await sb.from("action_logs").insert(payload);
-        if (error) throw error;
-
-        logTitulo.value = "";
-        logDesc.value = "";
-        toast("Adicionado na timeline ✅");
-        await loadLogs();
-      } catch (err) {
-        console.error(err);
-        toast(humanError(err));
-      }
-    });
-
-    btnGerarFicha.addEventListener("click", async () => {
-      if (!id) return;
-
-      try {
-        // já existe ficha?
-        const { data: existing, error: e1 } = await sb
-          .from("fichas_credenciamento")
-          .select("id")
-          .eq("negociacao_id", id)
-          .maybeSingle();
-
-        if (!e1 && existing?.id) {
-          location.href = `ficha.html?id=${existing.id}`;
-          return;
-        }
-
-        // cria ficha a partir da negociação
-        const payload = getPayload();
-
-        const { data: ficha, error } = await sb
-          .from("fichas_credenciamento")
-          .insert({
-            negociacao_id: id,
-            created_by: user.id,
-            status: "rascunho",
-            nome_comercio: payload.nome_comercio,
-            cnpj: payload.cnpj,
-            segmento: payload.segmento,
-            telefone: payload.telefone,
-            contato_nome: payload.contato_nome,
-            contato_email: payload.contato_email,
-            uf: payload.uf,
-            cidade: payload.cidade,
-            observacao: payload.observacao
-          })
-          .select("id")
-          .single();
-
-        if (error) throw error;
-
-        toast("Ficha criada ✅");
-        location.href = `ficha.html?id=${ficha.id}`;
-      } catch (err) {
-        console.error(err);
-        toast(humanError(err));
-      }
-    });
-
-    (async function init(){
-      ctx = await ensureProfile();
-      user = ctx.user;
-      prof = ctx.prof;
-      await loadNegotiacao();
-    })().catch(err => {
+    try {
+      const { user } = await getProfile();
+      document.getElementById("btnLogout").onclick = logout;
+      await boot(user);
+    } catch (err) {
       console.error(err);
-      toast("Falha ao carregar. Veja o console (F12).");
-    });
+      toast("Erro ao carregar negociação. Veja o console (F12).");
+    }
   </script>
 </body>
 </html>
-
