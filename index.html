@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8">
-  <title>CRM Ronny Vegas • Login</title>
+  <title>CRM Ronny Vegas • Acesso</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="assets/app.css">
 </head>
@@ -10,16 +10,26 @@
 
   <div class="login-box">
     <h1>CRM Equipe Ronny</h1>
-    <p class="muted">Módulo: Credenciamento Vegas</p>
+    <p class="muted" id="subtitle">Módulo: Credenciamento Vegas</p>
 
-    <input id="email" type="email" placeholder="E-mail">
-    <input id="password" type="password" placeholder="Senha">
+    <!-- LOGIN -->
+    <div id="loginBox">
+      <input id="email" type="email" placeholder="E-mail">
+      <input id="password" type="password" placeholder="Senha">
+      <button id="btnLogin">Entrar</button>
 
-    <button id="btnLogin">Entrar</button>
+      <p class="small muted" style="margin-top:12px">
+        Esqueceu a senha? Use o reset pelo Supabase (por enquanto).
+      </p>
+    </div>
 
-    <p class="small muted" style="margin-top:12px">
-      Se der ruim: confere Supabase URL/Key no <b>assets/supabaseClient.js</b>
-    </p>
+    <!-- RESET SENHA -->
+    <div id="resetBox" style="display:none">
+      <p class="muted" id="resetMsg">Validando link…</p>
+      <input id="newpass" type="password" placeholder="Nova senha (mín. 6)" style="display:none">
+      <input id="newpass2" type="password" placeholder="Confirmar nova senha" style="display:none">
+      <button id="btnSave" style="display:none">Salvar nova senha</button>
+    </div>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -28,6 +38,74 @@
     import { sb } from "./assets/supabaseClient.js";
     import { toast } from "./assets/app.js";
 
+    const loginBox = document.getElementById("loginBox");
+    const resetBox = document.getElementById("resetBox");
+    const subtitle = document.getElementById("subtitle");
+    const resetMsg = document.getElementById("resetMsg");
+
+    const newpass = document.getElementById("newpass");
+    const newpass2 = document.getElementById("newpass2");
+    const btnSave = document.getElementById("btnSave");
+
+    function showResetUI(message){
+      subtitle.textContent = "Redefinição de senha";
+      loginBox.style.display = "none";
+      resetBox.style.display = "block";
+      resetMsg.textContent = message;
+    }
+
+    function showResetForm(){
+      newpass.style.display = "block";
+      newpass2.style.display = "block";
+      btnSave.style.display = "block";
+      resetMsg.textContent = "Pronto! Agora crie sua nova senha.";
+    }
+
+    async function initRecoveryIfAny(){
+      const url = new URL(location.href);
+      const code = url.searchParams.get("code");
+
+      // Caso A) link com ?code=...
+      if (code) {
+        showResetUI("Validando link de recuperação…");
+        const { error } = await sb.auth.exchangeCodeForSession(code);
+        if (error) {
+          console.error(error);
+          toast("Link inválido/expirado. Solicite novamente.");
+          resetMsg.textContent = "Link inválido/expirado. Solicite novamente.";
+          return false;
+        }
+        showResetForm();
+        return true;
+      }
+
+      // Caso B) link com #access_token=...&refresh_token=...&type=recovery
+      const hash = location.hash || "";
+      const params = new URLSearchParams(hash.replace("#",""));
+      const access_token = params.get("access_token");
+      const refresh_token = params.get("refresh_token");
+      const type = params.get("type");
+
+      if (access_token && refresh_token && (type === "recovery" || type === "signup")) {
+        showResetUI("Validando link de recuperação…");
+        const { error } = await sb.auth.setSession({ access_token, refresh_token });
+        if (error) {
+          console.error(error);
+          toast("Não consegui validar o link. Solicite novamente.");
+          resetMsg.textContent = "Não consegui validar o link. Solicite novamente.";
+          return false;
+        }
+        showResetForm();
+        return true;
+      }
+
+      return false; // não é recovery, segue login normal
+    }
+
+    // 1) tenta modo recovery
+    const isRecovery = await initRecoveryIfAny();
+
+    // 2) login normal
     document.getElementById("btnLogin").onclick = async () => {
       const email = document.getElementById("email").value.trim();
       const password = document.getElementById("password").value;
@@ -46,7 +124,37 @@
         location.href = "dashboard.html";
       }
     };
+
+    // 3) salvar nova senha (quando for recovery)
+    btnSave.onclick = async () => {
+      if (!isRecovery) return;
+
+      const p1 = newpass.value;
+      const p2 = newpass2.value;
+
+      if (!p1 || p1.length < 6) {
+        toast("A senha precisa ter pelo menos 6 caracteres.");
+        return;
+      }
+      if (p1 !== p2) {
+        toast("As senhas não conferem.");
+        return;
+      }
+
+      const { error } = await sb.auth.updateUser({ password: p1 });
+      if (error) {
+        console.error(error);
+        toast(error.message || "Erro ao salvar senha.");
+        return;
+      }
+
+      toast("Senha alterada! Agora é só entrar 😄");
+      // limpa URL (tira code/hash) pra não ficar tentando reset de novo
+      setTimeout(() => {
+        history.replaceState({}, document.title, "index.html");
+        location.href = "index.html";
+      }, 1200);
+    };
   </script>
 </body>
 </html>
-
