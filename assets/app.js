@@ -2,9 +2,6 @@ import { sb } from "./supabaseClient.js";
 
 const el = (id) => document.getElementById(id);
 
-export const BRL = (v) =>
-  (v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
 export function toast(msg) {
   const t = el("toast");
   if (!t) {
@@ -18,7 +15,9 @@ export function toast(msg) {
 }
 
 export async function requireAuth() {
-  const { data } = await sb.auth.getSession();
+  const { data, error } = await sb.auth.getSession();
+  if (error) throw error;
+
   if (!data.session) {
     location.href = "index.html";
     return null;
@@ -26,65 +25,71 @@ export async function requireAuth() {
   return data.session.user;
 }
 
+export function isAdminPapel(papel) {
+  const p = String(papel || "").toLowerCase();
+  return ["gestor", "adm", "adm_comercial"].includes(p);
+}
+
 /**
- * Lê o perfil do usuário em profiles2.
- * OBS: no seu banco tem coluna "e-mail" com hífen.
- * Pra evitar 400, NÃO vamos selecionar e-mail aqui.
+ * Busca o perfil do usuário em public.profiles2.
+ * Se não existir, tenta criar com papel = 'vendedor' (ou metadata.role/papel).
  */
 export async function getProfile() {
   const user = await requireAuth();
   if (!user) return null;
 
-  const { data: profile, error } = await sb
+  // 1) tenta ler
+  let { data: prof, error } = await sb
+    .from("profiles2")
+    .select("id,nome,papel")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (prof) return { user, profile: prof };
+
+  // 2) não achou -> tenta criar automático
+  const nomeAuto =
+    user.user_metadata?.nome ||
+    user.user_metadata?.name ||
+    user.email ||
+    "Usuário";
+
+  const papelMeta =
+    user.user_metadata?.papel ||
+    user.user_metadata?.role ||
+    "vendedor";
+
+  const papelAuto = String(papelMeta).toLowerCase();
+  const papelFinal = ["vendedor", "gestor", "adm", "adm_comercial"].includes(papelAuto)
+    ? papelAuto
+    : "vendedor";
+
+  const { error: insErr } = await sb.from("profiles2").insert({
+    id: user.id,
+    nome: nomeAuto,
+    papel: papelFinal
+  });
+
+  if (insErr) {
+    // aqui normalmente é RLS/policy do profiles2
+    console.error("INSERT PROFILE ERROR:", insErr);
+    toast("Não consegui criar seu perfil (profiles2). Verifique RLS/policies.");
+    throw insErr;
+  }
+
+  // 3) lê de novo
+  const { data: prof2, error: selErr2 } = await sb
     .from("profiles2")
     .select("id,nome,papel")
     .eq("id", user.id)
     .single();
 
-  if (error || !profile) {
-    toast("Perfil não encontrado em profiles2. Confere se existe id=user.id.");
-    throw error || new Error("profile_not_found");
-  }
-
-  return { user, profile };
-}
-
-// compat: se algum arquivo chamar ensureProfile, funciona igual
-export const ensureProfile = getProfile;
-
-/** ADM/Gestor? (baseado no profiles2.papel) */
-export function isAdminPapel(papel) {
-  const p = String(papel || "").toLowerCase();
-  return p === "adm" || p === "gestor" || p === "adm_comercial";
+  if (selErr2) throw selErr2;
+  return { user, profile: prof2 };
 }
 
 export async function logout() {
   await sb.auth.signOut();
   location.href = "index.html";
-}
-
-export function periodStart(kind) {
-  const d = new Date();
-  if (kind === "all") return new Date("2000-01-01T00:00:00");
-  if (kind === "mtd") return new Date(d.getFullYear(), d.getMonth(), 1);
-  const days = Number(kind);
-  const s = new Date();
-  s.setDate(s.getDate() - days);
-  return s;
-}
-
-export function bindChipGroup(groupId, onChange) {
-  const root = el(groupId);
-  if (!root) return;
-
-  root.querySelectorAll(".chip").forEach((btn) =>
-    btn.addEventListener("click", () => {
-      root.querySelectorAll(".chip").forEach((b) =>
-        b.setAttribute("aria-pressed", "false")
-      );
-      btn.setAttribute("aria-pressed", "true");
-      root.dataset.value = btn.dataset.value || btn.textContent.trim();
-      onChange?.(root.dataset.value);
-    })
-  );
 }
