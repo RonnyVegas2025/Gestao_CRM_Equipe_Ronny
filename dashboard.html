@@ -14,7 +14,10 @@
       <div class="muted" id="who">Carregando…</div>
     </div>
 
-    <button id="btnLogout" class="btn-ghost">Sair</button>
+    <div style="display:flex;gap:10px;align-items:center">
+      <a id="btnAdm" class="btn-ghost" href="adm_demandas.html" style="display:none">📌 ADM Demandas</a>
+      <button id="btnLogout" class="btn-ghost">Sair</button>
+    </div>
   </header>
 
   <main class="wrap">
@@ -25,12 +28,13 @@
     </section>
 
     <section class="card">
-      <h2>📋 Minhas negociações</h2>
-      <div class="row" style="justify-content:space-between;gap:12px;flex-wrap:wrap">
-        <div class="muted">Lista (em breve) + botão de nova negociação.</div>
-        <a class="btn" href="negociacoes.html">+ Nova negociação</a>
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+        <h2>📋 Minhas negociações</h2>
+        <button class="btn" id="btnNova" disabled title="Vamos habilitar no próximo módulo">+ Nova negociação</button>
       </div>
-      <div id="negociacoes" class="list" style="margin-top:12px">Carregando…</div>
+      <div id="negociacoes" class="muted" style="margin-top:10px">
+        Lista (em breve) + tela de negociação + timeline + gerar ficha.
+      </div>
     </section>
 
   </main>
@@ -39,48 +43,31 @@
 
   <script type="module">
     import { sb } from "./assets/supabaseClient.js";
-    import { getProfile, logout, toast } from "./assets/app.js";
+    import { getProfile, logout, toast, isAdminPapel } from "./assets/app.js";
 
     const demandasEl = document.getElementById("demandas");
-    const negEl = document.getElementById("negociacoes");
+    const btnLogout = document.getElementById("btnLogout");
+    const btnAdm = document.getElementById("btnAdm");
 
-    function badge(status){
-      return `<span class="badge">${status}</span>`;
-    }
+    btnLogout.onclick = logout;
 
-    function demandaHTML(d){
+    function itemHTML(d){
       return `
         <div class="item">
           <div class="row">
             <b>${d.nome_comercio}</b>
-            ${badge(d.status)}
+            <span class="badge">${d.status}</span>
           </div>
           <div class="muted">
             ${d.segmento || "—"} • ${d.telefone || "—"}<br>
-            ${d.cidade ? (d.cidade + " / " + (d.uf||"")) : ""}
+            ${d.cidade ? (d.cidade + " / " + (d.uf||"")) : "—"}
           </div>
           ${d.observacao ? `<div class="small" style="margin-top:6px">${d.observacao}</div>` : ""}
+
           <div style="margin-top:10px">
-            <button class="btn" disabled title="Vamos habilitar no próximo módulo">
+            <button class="btn" disabled title="Próximo passo: virar negociação">
               Virar negociação (em breve)
             </button>
-          </div>
-        </div>
-      `;
-    }
-
-    function negHTML(n){
-      return `
-        <div class="item">
-          <div class="row">
-            <b>${n.nome_fantasia || n.nome_fantasia === "" ? n.nome_fantasia : (n.nome_comercio || n.razao_social || "Negociação")}</b>
-            ${badge(n.status)}
-          </div>
-          <div class="muted">
-            ${n.cidade ? (n.cidade + " / " + (n.uf||"")) : ""} • ${n.segmento || "—"}
-          </div>
-          <div style="margin-top:10px">
-            <a class="btn" href="detalhe.html?id=${n.id}">Abrir</a>
           </div>
         </div>
       `;
@@ -90,44 +77,34 @@
       const { user, profile } = await getProfile();
 
       document.getElementById("who").textContent =
-        `${profile.nome || "Usuário"} • ${profile.papel || "vendedor"}`;
+        `${profile.nome} • ${profile.papel}`;
 
-      document.getElementById("btnLogout").onclick = logout;
+      // Mostra botão ADM só pra gestor/adm/adm_comercial
+      if (isAdminPapel(profile.papel)) {
+        btnAdm.style.display = "inline-flex";
+      }
 
-      // DEMANDAS pendentes do vendedor
-      const { data: dem, error: demErr } = await sb
+      // Carrega pendências do vendedor (assigned_to = user.id)
+      const { data, error } = await sb
         .from("demandas_credenciamento")
         .select("id,nome_comercio,segmento,telefone,observacao,uf,cidade,status,created_at")
         .eq("assigned_to", user.id)
         .order("created_at", { ascending: true });
 
-      if (demErr) throw demErr;
+      if (error) throw error;
 
-      const pendentes = (dem || []).filter(x => x.status === "pendente");
+      const pendentes = (data || []).filter(x => x.status === "pendente" || x.status === "aceita");
 
-      demandasEl.innerHTML = pendentes.length
-        ? pendentes.map(demandaHTML).join("")
-        : `<div class="muted"><i>Sem pendências 🎉</i></div>`;
-
-      // NEGOCIAÇÕES do vendedor (lista básica)
-      const { data: negs, error: negErr } = await sb
-        .from("negociacoes")
-        .select("id,status,segmento,uf,cidade,razao_social,nome_fantasia,nome_comercio,created_at")
-        .eq("assigned_to", user.id)
-        .order("created_at", { ascending: false })
-        .limit(20);
-
-      if (negErr) throw negErr;
-
-      negEl.innerHTML = (negs && negs.length)
-        ? negs.map(negHTML).join("")
-        : `<div class="muted"><i>Nenhuma negociação ainda.</i></div>`;
+      if (!pendentes.length) {
+        demandasEl.innerHTML = `<div class="muted"><i>Sem pendências 🎉</i></div>`;
+      } else {
+        demandasEl.innerHTML = pendentes.map(itemHTML).join("");
+      }
 
     } catch (err) {
       console.error(err);
+      demandasEl.innerHTML = `<div class="muted"><i>Falha ao carregar.</i></div>`;
       toast("Erro ao carregar dashboard. Veja o console (F12).");
-      demandasEl.innerHTML = `<div class="muted">Falha ao carregar.</div>`;
-      negEl.innerHTML = `<div class="muted">Falha ao carregar.</div>`;
     }
   </script>
 </body>
