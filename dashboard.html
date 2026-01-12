@@ -2,110 +2,213 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8">
-  <title>Dashboard • Credenciamento</title>
+  <title>Credenciamento • Dashboard</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
 
-  <header class="top">
-    <div>
-      <h1>Credenciamento • Dashboard</h1>
-      <div class="muted" id="who">Carregando…</div>
+<header class="top">
+  <div>
+    <h1>Credenciamento • Dashboard</h1>
+    <div class="muted" id="who">Carregando…</div>
+  </div>
+
+  <div style="display:flex;gap:10px;align-items:center">
+    <a class="btn-ghost" href="adm_demandas.html" id="btnAdm" style="display:none">Central de Demandas</a>
+    <button id="btnLogout" class="btn-ghost">Sair</button>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="card">
+    <h2>📌 Pendências (Demandas)</h2>
+    <div id="demandas" class="list">Carregando…</div>
+  </section>
+
+  <section class="card">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h2>📋 Minhas negociações</h2>
+      <a class="btn" href="negociacao.html">+ Nova negociação</a>
     </div>
+    <div id="negociacoes" class="list">Carregando…</div>
+  </section>
 
-    <div style="display:flex;gap:10px;align-items:center">
-      <a id="btnAdm" class="btn-ghost" href="adm_demandas.html" style="display:none">📌 ADM Demandas</a>
-      <button id="btnLogout" class="btn-ghost">Sair</button>
-    </div>
-  </header>
+</main>
 
-  <main class="wrap">
+<div class="toast" id="toast"></div>
 
-    <section class="card">
-      <h2>📌 Pendências (Demandas)</h2>
-      <div id="demandas" class="list">Carregando…</div>
-    </section>
+<script type="module">
+  import { sb } from "./assets/supabaseClient.js";
+  import { getProfile, logout, toast, isAdminRole } from "./assets/app.js";
 
-    <section class="card">
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-        <h2>📋 Minhas negociações</h2>
-        <button class="btn" id="btnNova" disabled title="Vamos habilitar no próximo módulo">+ Nova negociação</button>
-      </div>
-      <div id="negociacoes" class="muted" style="margin-top:10px">
-        Lista (em breve) + tela de negociação + timeline + gerar ficha.
-      </div>
-    </section>
+  const demandasEl = document.getElementById("demandas");
+  const negEl = document.getElementById("negociacoes");
 
-  </main>
+  function badge(status){
+    return `<span class="badge">${status}</span>`;
+  }
 
-  <div class="toast" id="toast"></div>
-
-  <script type="module">
-    import { sb } from "./assets/supabaseClient.js";
-    import { getProfile, logout, toast, isAdminPapel } from "./assets/app.js";
-
-    const demandasEl = document.getElementById("demandas");
-    const btnLogout = document.getElementById("btnLogout");
-    const btnAdm = document.getElementById("btnAdm");
-
-    btnLogout.onclick = logout;
-
-    function itemHTML(d){
-      return `
-        <div class="item">
-          <div class="row">
-            <b>${d.nome_comercio}</b>
-            <span class="badge">${d.status}</span>
-          </div>
-          <div class="muted">
-            ${d.segmento || "—"} • ${d.telefone || "—"}<br>
-            ${d.cidade ? (d.cidade + " / " + (d.uf||"")) : "—"}
-          </div>
-          ${d.observacao ? `<div class="small" style="margin-top:6px">${d.observacao}</div>` : ""}
-
-          <div style="margin-top:10px">
-            <button class="btn" disabled title="Próximo passo: virar negociação">
-              Virar negociação (em breve)
-            </button>
-          </div>
+  function demandaHTML(d){
+    return `
+      <div class="item">
+        <div class="row">
+          <b>${d.nome_comercio}</b>
+          ${badge(d.status)}
         </div>
-      `;
+        <div class="muted">
+          ${(d.segmento || "—")} • ${(d.telefone || "—")}<br>
+          ${d.cidade ? `${d.cidade} / ${(d.uf||"")}` : ""}
+        </div>
+        ${d.observacao ? `<div class="small" style="margin-top:6px">${d.observacao}</div>` : ""}
+        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn" data-virar="${d.id}">Virar negociação</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function negociacaoHTML(n){
+    return `
+      <div class="item">
+        <div class="row">
+          <b>${n.nome_fantasia || n.nome_comercio || n.razao_social || "Sem nome"}</b>
+          ${badge(n.status)}
+        </div>
+        <div class="muted">
+          Origem: ${n.origem} • ${(n.cidade ? `${n.cidade}/${n.uf||""}` : "—")}
+        </div>
+        <div style="margin-top:10px">
+          <a class="btn" href="negociacao.html?id=${n.id}">Abrir</a>
+        </div>
+      </div>
+    `;
+  }
+
+  async function virarNegociacao(demandaId, userId){
+    // 1) carrega demanda
+    const { data: d, error: e1 } = await sb
+      .from("demandas_credenciamento")
+      .select("*")
+      .eq("id", demandaId)
+      .single();
+
+    if (e1) throw e1;
+
+    // 2) cria negociação
+    const payload = {
+      created_by: userId,
+      assigned_to: userId,
+      produto: "credenciamento",
+      origem: "adm_comercial",
+      status: "em_negociacao",
+
+      cnpj: null,
+      razao_social: null,
+      nome_fantasia: d.nome_comercio,
+      segmento: d.segmento,
+
+      contato_nome: d.contato_nome,
+      contato_telefone: d.telefone,
+      contato_email: d.contato_email,
+
+      uf: d.uf,
+      cidade: d.cidade,
+
+      acordo_obs: d.observacao || null,
+      demanda_id: d.id,
+    };
+
+    const { data: ins, error: e2 } = await sb
+      .from("negociacoes")
+      .insert(payload)
+      .select("id")
+      .single();
+
+    if (e2) throw e2;
+
+    // 3) atualiza demanda: aceita + link
+    const { error: e3 } = await sb
+      .from("demandas_credenciamento")
+      .update({ status: "aceita", negociacao_id: ins.id })
+      .eq("id", d.id);
+
+    if (e3) throw e3;
+
+    return ins.id;
+  }
+
+  async function load(user, profile){
+    document.getElementById("who").textContent =
+      `${profile.nome} • ${profile.papel}`;
+
+    document.getElementById("btnLogout").onclick = logout;
+
+    // gestor/adm vê botão da central
+    if (isAdminRole(profile.papel)) {
+      document.getElementById("btnAdm").style.display = "inline-block";
     }
 
-    try {
-      const { user, profile } = await getProfile();
+    // DEMANDAS (somente pendentes do usuário)
+    const { data: demandas, error: dErr } = await sb
+      .from("demandas_credenciamento")
+      .select("id,nome_comercio,segmento,telefone,observacao,uf,cidade,status,created_at")
+      .eq("assigned_to", user.id)
+      .order("created_at", { ascending: true });
 
-      document.getElementById("who").textContent =
-        `${profile.nome} • ${profile.papel}`;
-
-      // Mostra botão ADM só pra gestor/adm/adm_comercial
-      if (isAdminPapel(profile.papel)) {
-        btnAdm.style.display = "inline-flex";
-      }
-
-      // Carrega pendências do vendedor (assigned_to = user.id)
-      const { data, error } = await sb
-        .from("demandas_credenciamento")
-        .select("id,nome_comercio,segmento,telefone,observacao,uf,cidade,status,created_at")
-        .eq("assigned_to", user.id)
-        .order("created_at", { ascending: true });
-
-      if (error) throw error;
-
-      const pendentes = (data || []).filter(x => x.status === "pendente" || x.status === "aceita");
-
-      if (!pendentes.length) {
-        demandasEl.innerHTML = `<div class="muted"><i>Sem pendências 🎉</i></div>`;
-      } else {
-        demandasEl.innerHTML = pendentes.map(itemHTML).join("");
-      }
-
-    } catch (err) {
-      console.error(err);
-      demandasEl.innerHTML = `<div class="muted"><i>Falha ao carregar.</i></div>`;
-      toast("Erro ao carregar dashboard. Veja o console (F12).");
+    if (dErr) {
+      console.error(dErr);
+      demandasEl.innerHTML = `<div class="muted">Falha ao carregar.</div>`;
+    } else {
+      const pend = (demandas || []).filter(x => x.status === "pendente");
+      demandasEl.innerHTML = pend.length ? pend.map(demandaHTML).join("") : `<div class="muted"><i>Sem pendências 🎉</i></div>`;
     }
-  </script>
+
+    // NEGOCIAÇÕES do usuário
+    const { data: negs, error: nErr } = await sb
+      .from("negociacoes")
+      .select("id,status,origem,cidade,uf,nome_fantasia,razao_social")
+      .eq("assigned_to", user.id)
+      .order("updated_at", { ascending: false });
+
+    if (nErr) {
+      console.error(nErr);
+      negEl.innerHTML = `<div class="muted">Falha ao carregar.</div>`;
+    } else {
+      negEl.innerHTML = (negs || []).length ? (negs || []).map(negociacaoHTML).join("") : `<div class="muted"><i>Nenhuma negociação ainda.</i></div>`;
+    }
+
+    // bind virar negociação
+    document.querySelectorAll("[data-virar]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-virar");
+        btn.disabled = true;
+        btn.textContent = "Criando…";
+        try{
+          const negId = await virarNegociacao(id, user.id);
+          toast("Virou negociação ✅");
+          location.href = `negociacao.html?id=${negId}`;
+        }catch(err){
+          console.error(err);
+          toast("Não consegui virar negociação. Veja F12.");
+          btn.disabled = false;
+          btn.textContent = "Virar negociação";
+        }
+      });
+    });
+  }
+
+  try {
+    const { user, profile } = await getProfile();
+    await load(user, profile);
+  } catch (err) {
+    console.error(err);
+    toast("Erro ao carregar dashboard. Veja o console (F12).");
+    demandasEl.innerHTML = `<div class="muted">Falha ao carregar.</div>`;
+    negEl.innerHTML = `<div class="muted">Falha ao carregar.</div>`;
+  }
+</script>
+
 </body>
 </html>
