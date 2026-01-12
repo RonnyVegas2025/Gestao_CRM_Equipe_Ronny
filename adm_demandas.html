@@ -5,6 +5,10 @@
   <title>Central de Demandas • Credenciamento</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="assets/app.css">
+  <style>
+    textarea{ min-height: 140px; resize: vertical; }
+    .hint{ font-size: 12px; opacity: .75; margin-top: 6px; }
+  </style>
 </head>
 <body>
 
@@ -27,43 +31,61 @@
 
     <div class="grid2" style="margin-top:10px">
       <div>
-        <div class="label">Vendedor</div>
+        <div class="label">Vendedor responsável *</div>
         <select id="assignedTo"></select>
+        <div class="hint">Se estiver vazio, é RLS do profiles2 (já te passei o SQL). 😉</div>
       </div>
 
       <div>
-        <div class="label">Nome do comércio</div>
+        <div class="label">Nome do comércio *</div>
         <input id="nome" placeholder="Ex: Padaria do Zé">
       </div>
 
       <div>
         <div class="label">Segmento</div>
-        <input id="segmento" placeholder="Ex: Alimentação">
+        <input id="segmento" placeholder="Ex: Padaria / Mercado / Farmácia">
       </div>
 
       <div>
-        <div class="label">Telefone</div>
-        <input id="telefone" placeholder="(xx) xxxxx-xxxx">
+        <div class="label">Telefone (celular)</div>
+        <input id="telefone" inputmode="tel" placeholder="(00) 00000-0000">
+      </div>
+
+      <div>
+        <div class="label">Telefone 2 (fixo / alternativo)</div>
+        <input id="telefone2" inputmode="tel" placeholder="(00) 0000-0000">
+      </div>
+
+      <div>
+        <div class="label">Contato (nome)</div>
+        <input id="contato_nome" placeholder="Ex: Maria">
+      </div>
+
+      <div>
+        <div class="label">Contato (e-mail)</div>
+        <input id="contato_email" type="email" placeholder="contato@empresa.com">
       </div>
 
       <div>
         <div class="label">UF</div>
-        <input id="uf" maxlength="2" placeholder="SP">
+        <select id="uf"></select>
       </div>
 
       <div>
         <div class="label">Cidade</div>
-        <input id="cidade" placeholder="Campinas">
+        <input id="cidade" list="cidadesList" placeholder="Escolha/Digite a cidade">
+        <datalist id="cidadesList"></datalist>
+        <div class="hint">Ao escolher a UF, eu carrego as cidades automaticamente (IBGE).</div>
       </div>
     </div>
 
     <div style="margin-top:10px">
-      <div class="label">Observação / Argumentos</div>
-      <textarea id="obs" rows="4" placeholder="Contexto da indicação, argumentos, quem pediu, urgência…"></textarea>
+      <div class="label">Observação / argumento / instruções</div>
+      <textarea id="obs" rows="7" placeholder="Contexto da indicação, argumentos, quem pediu, urgência, etc…"></textarea>
     </div>
 
     <div style="margin-top:12px;display:flex;gap:10px">
-      <button class="btn" id="btnCreate">Criar demanda</button>
+      <button class="btn" id="btnCreate">Enviar demanda</button>
     </div>
   </section>
 
@@ -87,10 +109,66 @@
   const nome = document.getElementById("nome");
   const segmento = document.getElementById("segmento");
   const telefone = document.getElementById("telefone");
+  const telefone2 = document.getElementById("telefone2");
+  const contato_nome = document.getElementById("contato_nome");
+  const contato_email = document.getElementById("contato_email");
   const uf = document.getElementById("uf");
   const cidade = document.getElementById("cidade");
+  const cidadesList = document.getElementById("cidadesList");
   const obs = document.getElementById("obs");
   const btnCreate = document.getElementById("btnCreate");
+
+  function norm(s){ return String(s||"").trim().toLowerCase(); }
+
+  function maskPhone(v){
+    v = String(v||"").replace(/\D/g,"").slice(0,11);
+    if (v.length <= 10) {
+      // (00) 0000-0000
+      return v
+        .replace(/^(\d{2})(\d)/, "($1) $2")
+        .replace(/(\d{4})(\d)/, "$1-$2");
+    }
+    // (00) 00000-0000
+    return v
+      .replace(/^(\d{2})(\d)/, "($1) $2")
+      .replace(/(\d{5})(\d)/, "$1-$2");
+  }
+
+  telefone.addEventListener("input", () => telefone.value = maskPhone(telefone.value));
+  telefone2.addEventListener("input", () => telefone2.value = maskPhone(telefone2.value));
+
+  const UFS = [
+    ["","Selecione…"],
+    ["AC","Acre"],["AL","Alagoas"],["AP","Amapá"],["AM","Amazonas"],["BA","Bahia"],
+    ["CE","Ceará"],["DF","Distrito Federal"],["ES","Espírito Santo"],["GO","Goiás"],
+    ["MA","Maranhão"],["MT","Mato Grosso"],["MS","Mato Grosso do Sul"],["MG","Minas Gerais"],
+    ["PA","Pará"],["PB","Paraíba"],["PR","Paraná"],["PE","Pernambuco"],["PI","Piauí"],
+    ["RJ","Rio de Janeiro"],["RN","Rio Grande do Norte"],["RS","Rio Grande do Sul"],
+    ["RO","Rondônia"],["RR","Roraima"],["SC","Santa Catarina"],["SP","São Paulo"],
+    ["SE","Sergipe"],["TO","Tocantins"]
+  ];
+
+  uf.innerHTML = UFS.map(([sigla,nome]) => `<option value="${sigla}">${sigla ? sigla+" - "+nome : nome}</option>`).join("");
+
+  async function loadCitiesByUF(sigla){
+    cidadesList.innerHTML = "";
+    cidade.value = "";
+    if(!sigla) return;
+
+    try{
+      // API pública do IBGE
+      const resp = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${sigla}/municipios`);
+      const arr = await resp.json();
+      cidadesList.innerHTML = (arr||[])
+        .map(x => `<option value="${x.nome}"></option>`)
+        .join("");
+    }catch(e){
+      console.error("IBGE fetch error:", e);
+      // sem drama, deixa o usuário digitar
+    }
+  }
+
+  uf.addEventListener("change", () => loadCitiesByUF(uf.value));
 
   function itemHTML(d){
     return `
@@ -101,10 +179,9 @@
         </div>
         <div class="muted">
           Vendedor: <b>${d.assigned_nome || "—"}</b><br>
-          ${(d.segmento || "—")} • ${(d.telefone || "—")} • ${(d.cidade ? `${d.cidade}/${d.uf||""}` : "—")}
+          ${(d.segmento || "—")} • ${(d.telefone || "—")}${d.telefone2 ? " / "+d.telefone2 : ""} • ${(d.cidade ? `${d.cidade}/${d.uf||""}` : "—")}
         </div>
         ${d.observacao ? `<div class="small" style="margin-top:6px">${d.observacao}</div>` : ""}
-
         <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
           ${d.negociacao_id ? `<a class="btn" href="negociacao.html?id=${d.negociacao_id}">Abrir negociação</a>` : ""}
         </div>
@@ -120,24 +197,25 @@
 
     if (error) throw error;
 
-    const sellers = (data || []).filter(p => String(p.papel).toLowerCase() === "vendedor");
-    sellerSel.innerHTML = sellers.map(s => `<option value="${s.id}">${s.nome}</option>`).join("");
+    // aceita vendedor mesmo se vier "Vendedor", "VENDEDOR", etc
+    const sellers = (data || []).filter(p => norm(p.papel) === "vendedor");
 
     if (!sellers.length) {
       sellerSel.innerHTML = `<option value="">(Nenhum vendedor cadastrado no profiles2)</option>`;
+      return;
     }
+
+    sellerSel.innerHTML = sellers.map(s => `<option value="${s.id}">${s.nome}</option>`).join("");
   }
 
   async function loadList(){
-    // pega demandas
     const { data, error } = await sb
       .from("demandas_credenciamento")
-      .select("id,nome_comercio,segmento,telefone,uf,cidade,observacao,status,assigned_to,negociacao_id,created_at")
+      .select("id,nome_comercio,segmento,telefone,telefone2,uf,cidade,observacao,status,assigned_to,negociacao_id,created_at")
       .order("created_at", { ascending: false });
 
     if (error) throw error;
 
-    // pega perfis pra mapear nome
     const { data: profs, error: pErr } = await sb
       .from("profiles2")
       .select("id,nome");
@@ -167,6 +245,9 @@
       nome_comercio: nome.value.trim(),
       segmento: segmento.value.trim() || null,
       telefone: telefone.value.trim() || null,
+      telefone2: telefone2.value.trim() || null,
+      contato_nome: contato_nome.value.trim() || null,
+      contato_email: contato_email.value.trim() || null,
       uf: (uf.value || "").trim().toUpperCase() || null,
       cidade: cidade.value.trim() || null,
       observacao: obs.value.trim() || null,
@@ -175,12 +256,17 @@
     const { error } = await sb.from("demandas_credenciamento").insert(payload);
     if (error) throw error;
 
+    // limpa
     nome.value = "";
     segmento.value = "";
     telefone.value = "";
+    telefone2.value = "";
+    contato_nome.value = "";
+    contato_email.value = "";
     uf.value = "";
     cidade.value = "";
     obs.value = "";
+    cidadesList.innerHTML = "";
   }
 
   try{
@@ -199,17 +285,17 @@
 
     btnCreate.addEventListener("click", async () => {
       btnCreate.disabled = true;
-      btnCreate.textContent = "Criando…";
+      btnCreate.textContent = "Enviando…";
       try{
         await createDemand(user.id);
-        toast("Demanda criada ✅");
+        toast("Demanda enviada ✅");
         await loadList();
       }catch(err){
         console.error(err);
-        toast("Erro ao criar demanda. Veja F12.");
+        toast("Erro ao enviar demanda. Veja F12.");
       }finally{
         btnCreate.disabled = false;
-        btnCreate.textContent = "Criar demanda";
+        btnCreate.textContent = "Enviar demanda";
       }
     });
 
