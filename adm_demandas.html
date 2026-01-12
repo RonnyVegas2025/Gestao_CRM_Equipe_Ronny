@@ -2,365 +2,223 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8">
-  <title>ADM • Demandas de Credenciamento</title>
+  <title>Central de Demandas • Credenciamento</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
 
-  <header class="top">
-    <div>
-      <h1>ADM • Demandas de Credenciamento</h1>
-      <div class="muted" id="who">Carregando…</div>
+<header class="top">
+  <div>
+    <h1>Central de Demandas</h1>
+    <div class="muted" id="who">Carregando…</div>
+  </div>
+
+  <div style="display:flex;gap:10px;align-items:center">
+    <a class="btn-ghost" href="dashboard.html">Voltar</a>
+    <button id="btnLogout" class="btn-ghost">Sair</button>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="card">
+    <h2>➕ Nova demanda</h2>
+
+    <div class="grid2" style="margin-top:10px">
+      <div>
+        <div class="label">Vendedor</div>
+        <select id="assignedTo"></select>
+      </div>
+
+      <div>
+        <div class="label">Nome do comércio</div>
+        <input id="nome" placeholder="Ex: Padaria do Zé">
+      </div>
+
+      <div>
+        <div class="label">Segmento</div>
+        <input id="segmento" placeholder="Ex: Alimentação">
+      </div>
+
+      <div>
+        <div class="label">Telefone</div>
+        <input id="telefone" placeholder="(xx) xxxxx-xxxx">
+      </div>
+
+      <div>
+        <div class="label">UF</div>
+        <input id="uf" maxlength="2" placeholder="SP">
+      </div>
+
+      <div>
+        <div class="label">Cidade</div>
+        <input id="cidade" placeholder="Campinas">
+      </div>
     </div>
 
-    <div style="display:flex;gap:10px;align-items:center">
-      <a class="btn-ghost" href="dashboard.html">Voltar</a>
-      <button id="btnLogout" class="btn-ghost">Sair</button>
+    <div style="margin-top:10px">
+      <div class="label">Observação / Argumentos</div>
+      <textarea id="obs" rows="4" placeholder="Contexto da indicação, argumentos, quem pediu, urgência…"></textarea>
     </div>
-  </header>
 
-  <main class="wrap">
+    <div style="margin-top:12px;display:flex;gap:10px">
+      <button class="btn" id="btnCreate">Criar demanda</button>
+    </div>
+  </section>
 
-    <section class="card">
-      <h2>➕ Nova demanda</h2>
+  <section class="card">
+    <h2>📌 Acompanhamento</h2>
+    <div id="list" class="list">Carregando…</div>
+  </section>
 
-      <div class="grid" style="margin-top:10px">
-        <div>
-          <label class="lbl">Vendedor responsável</label>
-          <select id="assignedTo" class="inp"></select>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+  import { sb } from "./assets/supabaseClient.js";
+  import { getProfile, logout, toast, isAdminRole } from "./assets/app.js";
+
+  const who = document.getElementById("who");
+  const listEl = document.getElementById("list");
+  const sellerSel = document.getElementById("assignedTo");
+
+  const nome = document.getElementById("nome");
+  const segmento = document.getElementById("segmento");
+  const telefone = document.getElementById("telefone");
+  const uf = document.getElementById("uf");
+  const cidade = document.getElementById("cidade");
+  const obs = document.getElementById("obs");
+  const btnCreate = document.getElementById("btnCreate");
+
+  function itemHTML(d){
+    return `
+      <div class="item">
+        <div class="row">
+          <b>${d.nome_comercio}</b>
+          <span class="badge">${d.status}</span>
         </div>
-
-        <div>
-          <label class="lbl">Nome do comércio *</label>
-          <input id="nome_comercio" class="inp" placeholder="Ex: Padaria do Zé">
+        <div class="muted">
+          Vendedor: <b>${d.assigned_nome || "—"}</b><br>
+          ${(d.segmento || "—")} • ${(d.telefone || "—")} • ${(d.cidade ? `${d.cidade}/${d.uf||""}` : "—")}
         </div>
+        ${d.observacao ? `<div class="small" style="margin-top:6px">${d.observacao}</div>` : ""}
 
-        <div>
-          <label class="lbl">Segmento</label>
-          <input id="segmento" class="inp" placeholder="Ex: Alimentação / Farmácia / Mercado">
-        </div>
-
-        <div>
-          <label class="lbl">Telefone</label>
-          <input id="telefone" class="inp" placeholder="(19) 99999-9999">
-        </div>
-
-        <div>
-          <label class="lbl">Contato (nome)</label>
-          <input id="contato_nome" class="inp" placeholder="Ex: Maria">
-        </div>
-
-        <div>
-          <label class="lbl">Contato (e-mail)</label>
-          <input id="contato_email" class="inp" placeholder="email@comercio.com">
-        </div>
-
-        <div>
-          <label class="lbl">UF</label>
-          <input id="uf" class="inp" maxlength="2" placeholder="SP">
-        </div>
-
-        <div>
-          <label class="lbl">Cidade</label>
-          <input id="cidade" class="inp" placeholder="Americana">
-        </div>
-
-        <div style="grid-column: 1 / -1">
-          <label class="lbl">Observação / argumento / instruções</label>
-          <textarea id="observacao" class="inp" rows="4" placeholder="Ex: Cliente Vegas pediu urgência. Já aceita débito. Precisa de taxa X..."></textarea>
+        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+          ${d.negociacao_id ? `<a class="btn" href="negociacao.html?id=${d.negociacao_id}">Abrir negociação</a>` : ""}
         </div>
       </div>
+    `;
+  }
 
-      <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
-        <button id="btnCreate" class="btn">Enviar demanda</button>
-        <span class="muted small" id="createInfo"></span>
-      </div>
-    </section>
+  async function loadSellers(){
+    const { data, error } = await sb
+      .from("profiles2")
+      .select("id,nome,papel")
+      .order("nome", { ascending: true });
 
-    <section class="card">
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-        <h2>📌 Acompanhar demandas</h2>
+    if (error) throw error;
 
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <select id="fStatus" class="inp" style="width:auto">
-            <option value="all">Todos status</option>
-            <option value="pendente">pendente</option>
-            <option value="aceita">aceita</option>
-            <option value="concluida">concluida</option>
-            <option value="cancelada">cancelada</option>
-          </select>
+    const sellers = (data || []).filter(p => String(p.papel).toLowerCase() === "vendedor");
+    sellerSel.innerHTML = sellers.map(s => `<option value="${s.id}">${s.nome}</option>`).join("");
 
-          <input id="fSearch" class="inp" style="width:280px" placeholder="Buscar (comércio / cidade / vendedor / telefone)…">
-          <button id="btnReload" class="btn-ghost">Atualizar</button>
-        </div>
-      </div>
+    if (!sellers.length) {
+      sellerSel.innerHTML = `<option value="">(Nenhum vendedor cadastrado no profiles2)</option>`;
+    }
+  }
 
-      <div id="list" class="list" style="margin-top:12px">Carregando…</div>
-    </section>
+  async function loadList(){
+    // pega demandas
+    const { data, error } = await sb
+      .from("demandas_credenciamento")
+      .select("id,nome_comercio,segmento,telefone,uf,cidade,observacao,status,assigned_to,negociacao_id,created_at")
+      .order("created_at", { ascending: false });
 
-  </main>
+    if (error) throw error;
 
-  <div class="toast" id="toast"></div>
+    // pega perfis pra mapear nome
+    const { data: profs, error: pErr } = await sb
+      .from("profiles2")
+      .select("id,nome");
 
-  <script type="module">
-    import { sb } from "./assets/supabaseClient.js";
-    import { getProfile, logout, toast, isAdminPapel } from "./assets/app.js";
+    if (pErr) throw pErr;
 
-    const who = document.getElementById("who");
-    const btnLogout = document.getElementById("btnLogout");
-    const assignedTo = document.getElementById("assignedTo");
+    const map = new Map((profs||[]).map(x => [x.id, x.nome]));
 
-    const nome_comercio = document.getElementById("nome_comercio");
-    const segmento = document.getElementById("segmento");
-    const telefone = document.getElementById("telefone");
-    const contato_nome = document.getElementById("contato_nome");
-    const contato_email = document.getElementById("contato_email");
-    const uf = document.getElementById("uf");
-    const cidade = document.getElementById("cidade");
-    const observacao = document.getElementById("observacao");
+    const enriched = (data || []).map(d => ({
+      ...d,
+      assigned_nome: map.get(d.assigned_to)
+    }));
 
-    const btnCreate = document.getElementById("btnCreate");
-    const createInfo = document.getElementById("createInfo");
+    listEl.innerHTML = enriched.length ? enriched.map(itemHTML).join("") : `<div class="muted"><i>Nenhuma demanda ainda.</i></div>`;
+  }
 
-    const fStatus = document.getElementById("fStatus");
-    const fSearch = document.getElementById("fSearch");
-    const btnReload = document.getElementById("btnReload");
-    const list = document.getElementById("list");
+  async function createDemand(userId){
+    const assigned_to = sellerSel.value;
 
-    let me = null;
-    let profile = null;
-    let vendedores = []; // [{id,nome}]
+    if (!assigned_to) return toast("Escolhe um vendedor primeiro.");
+    if (!nome.value.trim()) return toast("Faltou o nome do comércio.");
 
-    btnLogout.onclick = logout;
+    const payload = {
+      created_by: userId,
+      assigned_to,
+      status: "pendente",
+      nome_comercio: nome.value.trim(),
+      segmento: segmento.value.trim() || null,
+      telefone: telefone.value.trim() || null,
+      uf: (uf.value || "").trim().toUpperCase() || null,
+      cidade: cidade.value.trim() || null,
+      observacao: obs.value.trim() || null,
+    };
 
-    function cleanText(s){ return String(s||"").toLowerCase().trim(); }
-    function fmtDate(iso){
-      try{
-        const d = new Date(iso);
-        return d.toLocaleString("pt-BR");
-      }catch(e){ return ""; }
+    const { error } = await sb.from("demandas_credenciamento").insert(payload);
+    if (error) throw error;
+
+    nome.value = "";
+    segmento.value = "";
+    telefone.value = "";
+    uf.value = "";
+    cidade.value = "";
+    obs.value = "";
+  }
+
+  try{
+    const { user, profile } = await getProfile();
+    who.textContent = `${profile.nome} • ${profile.papel}`;
+
+    document.getElementById("btnLogout").onclick = logout;
+
+    if (!isAdminRole(profile.papel)) {
+      toast("Seu usuário não tem acesso à Central.");
+      location.href = "dashboard.html";
     }
 
-    async function loadVendedores(){
-      const { data, error } = await sb
-        .from("profiles2")
-        .select("id,nome,papel")
-        .eq("papel", "vendedor")
-        .order("nome", { ascending: true });
-
-      if(error) throw error;
-
-      vendedores = data || [];
-      assignedTo.innerHTML = "";
-
-      if(!vendedores.length){
-        assignedTo.innerHTML = `<option value="">(Nenhum vendedor cadastrado em profiles2)</option>`;
-        return;
-      }
-
-      vendedores.forEach(v => {
-        const opt = document.createElement("option");
-        opt.value = v.id;
-        opt.textContent = v.nome || v.id;
-        assignedTo.appendChild(opt);
-      });
-    }
-
-    function vendedorNomeById(id){
-      const v = vendedores.find(x => x.id === id);
-      return v?.nome || id || "—";
-    }
-
-    function demandItemHTML(d){
-      const vend = vendedorNomeById(d.assigned_to);
-
-      return `
-        <div class="item">
-          <div class="row" style="justify-content:space-between;gap:10px">
-            <div>
-              <b>${d.nome_comercio}</b>
-              <div class="muted small">
-                ${d.segmento || "—"} • ${d.telefone || "—"} • ${d.cidade ? (d.cidade + " / " + (d.uf||"")) : "—"}
-              </div>
-            </div>
-
-            <span class="badge">${d.status}</span>
-          </div>
-
-          <div class="muted" style="margin-top:8px">
-            <b>Vendedor:</b> ${vend}
-            <span class="small">• criada em ${fmtDate(d.created_at)}</span>
-          </div>
-
-          ${d.observacao ? `<div class="small" style="margin-top:10px">${d.observacao}</div>` : ""}
-
-          <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-            <label class="small muted">Status:</label>
-            <select class="inp" style="width:auto" data-status="${d.id}">
-              <option value="pendente" ${d.status==="pendente"?"selected":""}>pendente</option>
-              <option value="aceita" ${d.status==="aceita"?"selected":""}>aceita</option>
-              <option value="concluida" ${d.status==="concluida"?"selected":""}>concluida</option>
-              <option value="cancelada" ${d.status==="cancelada"?"selected":""}>cancelada</option>
-            </select>
-
-            <button class="btn-ghost" data-save="${d.id}">Salvar</button>
-          </div>
-        </div>
-      `;
-    }
-
-    async function loadDemandas(){
-      list.textContent = "Carregando…";
-
-      const { data, error } = await sb
-        .from("demandas_credenciamento")
-        .select("id,assigned_to,status,nome_comercio,segmento,telefone,contato_nome,contato_email,uf,cidade,observacao,created_at")
-        .order("created_at", { ascending: false });
-
-      if(error) throw error;
-
-      let rows = data || [];
-
-      // filtro status
-      if(fStatus.value !== "all"){
-        rows = rows.filter(r => r.status === fStatus.value);
-      }
-
-      // filtro texto
-      const q = cleanText(fSearch.value);
-      if(q){
-        rows = rows.filter(r => {
-          const blob = [
-            r.nome_comercio, r.segmento, r.telefone, r.cidade, r.uf,
-            vendedorNomeById(r.assigned_to)
-          ].map(cleanText).join(" ");
-          return blob.includes(q);
-        });
-      }
-
-      if(!rows.length){
-        list.innerHTML = `<div class="muted"><i>Nenhuma demanda encontrada.</i></div>`;
-        return;
-      }
-
-      list.innerHTML = rows.map(demandItemHTML).join("");
-
-      // bind save status
-      list.querySelectorAll("[data-save]").forEach(btn => {
-        btn.addEventListener("click", async () => {
-          const id = btn.getAttribute("data-save");
-          const sel = list.querySelector(`[data-status="${id}"]`);
-          const newStatus = sel?.value;
-
-          if(!newStatus) return;
-
-          const { error: upErr } = await sb
-            .from("demandas_credenciamento")
-            .update({ status: newStatus })
-            .eq("id", id);
-
-          if(upErr){
-            console.error(upErr);
-            toast("Não consegui salvar. Ver console (F12).");
-            return;
-          }
-
-          toast("Status atualizado ✅");
-          await loadDemandas();
-        });
-      });
-    }
-
-    btnReload.addEventListener("click", loadDemandas);
-    fStatus.addEventListener("change", loadDemandas);
-    fSearch.addEventListener("input", () => {
-      clearTimeout(window.__fs);
-      window.__fs = setTimeout(loadDemandas, 250);
-    });
+    await loadSellers();
+    await loadList();
 
     btnCreate.addEventListener("click", async () => {
-      createInfo.textContent = "";
-
-      const vendId = assignedTo.value;
-      const nome = nome_comercio.value.trim();
-
-      if(!vendId){
-        toast("Escolhe um vendedor primeiro 🙂");
-        return;
+      btnCreate.disabled = true;
+      btnCreate.textContent = "Criando…";
+      try{
+        await createDemand(user.id);
+        toast("Demanda criada ✅");
+        await loadList();
+      }catch(err){
+        console.error(err);
+        toast("Erro ao criar demanda. Veja F12.");
+      }finally{
+        btnCreate.disabled = false;
+        btnCreate.textContent = "Criar demanda";
       }
-      if(!nome){
-        toast("Preenche o nome do comércio 😉");
-        return;
-      }
-
-      const payload = {
-        created_by: me.id,
-        assigned_to: vendId,
-        nome_comercio: nome,
-        segmento: segmento.value.trim() || null,
-        telefone: telefone.value.trim() || null,
-        contato_nome: contato_nome.value.trim() || null,
-        contato_email: contato_email.value.trim() || null,
-        uf: (uf.value || "").trim().toUpperCase() || null,
-        cidade: cidade.value.trim() || null,
-        observacao: observacao.value.trim() || null,
-        status: "pendente"
-      };
-
-      createInfo.textContent = "Enviando…";
-
-      const { error } = await sb
-        .from("demandas_credenciamento")
-        .insert(payload);
-
-      if(error){
-        console.error(error);
-        createInfo.textContent = "";
-        toast("Erro ao criar demanda. Veja o console (F12).");
-        return;
-      }
-
-      toast("Demanda criada e enviada ✅");
-      createInfo.textContent = "✅ Enviada!";
-
-      // limpa campos (mantém vendedor)
-      nome_comercio.value = "";
-      segmento.value = "";
-      telefone.value = "";
-      contato_nome.value = "";
-      contato_email.value = "";
-      uf.value = "";
-      cidade.value = "";
-      observacao.value = "";
-
-      await loadDemandas();
     });
 
-    // init
-    try{
-      const res = await getProfile();
-      me = res.user;
-      profile = res.profile;
-
-      who.textContent = `${profile.nome} • ${profile.papel}`;
-
-      if(!isAdminPapel(profile.papel)){
-        toast("Acesso negado. Esta tela é só para gestor/adm.");
-        setTimeout(() => location.href = "dashboard.html", 900);
-        throw new Error("not_admin");
-      }
-
-      await loadVendedores();
-      await loadDemandas();
-
-    }catch(err){
-      console.error(err);
-      if(String(err?.message||"") !== "not_admin"){
-        toast("Falha ao carregar ADM. Veja o console (F12).");
-      }
-    }
-  </script>
+  }catch(err){
+    console.error(err);
+    toast("Erro ao carregar Central. Veja F12.");
+    listEl.innerHTML = `<div class="muted">Falha ao carregar.</div>`;
+  }
+</script>
 
 </body>
 </html>
