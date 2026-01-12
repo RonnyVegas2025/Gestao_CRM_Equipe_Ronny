@@ -1,20 +1,20 @@
 <!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8" />
-  <title>ADM • Demandas • Credenciamento</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="assets/app.css" />
+  <meta charset="utf-8">
+  <title>ADM • Demandas de Credenciamento</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
 
   <header class="top">
     <div>
-      <h1>ADM • Demandas (Credenciamento)</h1>
+      <h1>ADM • Demandas de Credenciamento</h1>
       <div class="muted" id="who">Carregando…</div>
     </div>
 
-    <div class="row" style="gap:10px">
+    <div style="display:flex;gap:10px;align-items:center">
       <a class="btn-ghost" href="dashboard.html">Voltar</a>
       <button id="btnLogout" class="btn-ghost">Sair</button>
     </div>
@@ -25,78 +25,78 @@
     <section class="card">
       <h2>➕ Nova demanda</h2>
 
-      <div class="grid" style="grid-template-columns: 1fr 1fr; gap:12px">
+      <div class="grid" style="margin-top:10px">
         <div>
-          <label class="muted small">Vendedor responsável</label>
-          <select id="assignedTo">
-            <option value="">Carregando vendedores…</option>
-          </select>
+          <label class="lbl">Vendedor responsável</label>
+          <select id="assignedTo" class="inp"></select>
         </div>
 
         <div>
-          <label class="muted small">Telefone</label>
-          <input id="telefone" placeholder="(xx) xxxxx-xxxx" />
+          <label class="lbl">Nome do comércio *</label>
+          <input id="nome_comercio" class="inp" placeholder="Ex: Padaria do Zé">
         </div>
 
         <div>
-          <label class="muted small">Nome do comércio *</label>
-          <input id="nomeComercio" placeholder="Ex: Padaria do Zé" />
+          <label class="lbl">Segmento</label>
+          <input id="segmento" class="inp" placeholder="Ex: Alimentação / Farmácia / Mercado">
         </div>
 
         <div>
-          <label class="muted small">Segmento</label>
-          <input id="segmento" placeholder="Ex: Alimentação / Mercado / Farmácia" />
+          <label class="lbl">Telefone</label>
+          <input id="telefone" class="inp" placeholder="(19) 99999-9999">
         </div>
 
         <div>
-          <label class="muted small">UF</label>
-          <input id="uf" maxlength="2" placeholder="SP" />
+          <label class="lbl">Contato (nome)</label>
+          <input id="contato_nome" class="inp" placeholder="Ex: Maria">
         </div>
 
         <div>
-          <label class="muted small">Cidade</label>
-          <input id="cidade" placeholder="Americana" />
+          <label class="lbl">Contato (e-mail)</label>
+          <input id="contato_email" class="inp" placeholder="email@comercio.com">
         </div>
 
         <div>
-          <label class="muted small">Contato (nome)</label>
-          <input id="contatoNome" placeholder="Ex: Marcos" />
+          <label class="lbl">UF</label>
+          <input id="uf" class="inp" maxlength="2" placeholder="SP">
         </div>
 
         <div>
-          <label class="muted small">Contato (e-mail)</label>
-          <input id="contatoEmail" type="email" placeholder="ex@empresa.com" />
+          <label class="lbl">Cidade</label>
+          <input id="cidade" class="inp" placeholder="Americana">
+        </div>
+
+        <div style="grid-column: 1 / -1">
+          <label class="lbl">Observação / argumento / instruções</label>
+          <textarea id="observacao" class="inp" rows="4" placeholder="Ex: Cliente Vegas pediu urgência. Já aceita débito. Precisa de taxa X..."></textarea>
         </div>
       </div>
 
-      <div style="margin-top:12px">
-        <label class="muted small">Observação / Argumentos</label>
-        <textarea id="observacao" rows="4" placeholder="Contexto da indicação, argumentos, quem pediu, urgência etc."></textarea>
+      <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
+        <button id="btnCreate" class="btn">Enviar demanda</button>
+        <span class="muted small" id="createInfo"></span>
       </div>
-
-      <div class="row" style="margin-top:12px; gap:10px; justify-content:flex-end">
-        <button class="btn" id="btnCreate">Criar demanda</button>
-      </div>
-
-      <div class="muted small" id="createInfo" style="margin-top:10px"></div>
     </section>
 
     <section class="card">
-      <h2>📌 Demandas criadas</h2>
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+        <h2>📌 Acompanhar demandas</h2>
 
-      <div class="row" style="gap:10px; flex-wrap:wrap; align-items:center">
-        <select id="filterStatus">
-          <option value="todos">Todos</option>
-          <option value="pendente">Pendente</option>
-          <option value="aceita">Aceita</option>
-          <option value="concluida">Concluída</option>
-          <option value="cancelada">Cancelada</option>
-        </select>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <select id="fStatus" class="inp" style="width:auto">
+            <option value="all">Todos status</option>
+            <option value="pendente">pendente</option>
+            <option value="aceita">aceita</option>
+            <option value="concluida">concluida</option>
+            <option value="cancelada">cancelada</option>
+          </select>
 
-        <button class="btn-ghost" id="btnReload">Atualizar</button>
+          <input id="fSearch" class="inp" style="width:280px" placeholder="Buscar (comércio / cidade / vendedor / telefone)…">
+          <button id="btnReload" class="btn-ghost">Atualizar</button>
+        </div>
       </div>
 
-      <div id="lista" class="list" style="margin-top:12px">Carregando…</div>
+      <div id="list" class="list" style="margin-top:12px">Carregando…</div>
     </section>
 
   </main>
@@ -107,234 +107,260 @@
     import { sb } from "./assets/supabaseClient.js";
     import { getProfile, logout, toast, isAdminPapel } from "./assets/app.js";
 
-    const whoEl = document.getElementById("who");
+    const who = document.getElementById("who");
     const btnLogout = document.getElementById("btnLogout");
+    const assignedTo = document.getElementById("assignedTo");
 
-    const assignedToEl = document.getElementById("assignedTo");
-    const nomeComercioEl = document.getElementById("nomeComercio");
-    const segmentoEl = document.getElementById("segmento");
-    const telefoneEl = document.getElementById("telefone");
-    const contatoNomeEl = document.getElementById("contatoNome");
-    const contatoEmailEl = document.getElementById("contatoEmail");
-    const ufEl = document.getElementById("uf");
-    const cidadeEl = document.getElementById("cidade");
-    const observacaoEl = document.getElementById("observacao");
+    const nome_comercio = document.getElementById("nome_comercio");
+    const segmento = document.getElementById("segmento");
+    const telefone = document.getElementById("telefone");
+    const contato_nome = document.getElementById("contato_nome");
+    const contato_email = document.getElementById("contato_email");
+    const uf = document.getElementById("uf");
+    const cidade = document.getElementById("cidade");
+    const observacao = document.getElementById("observacao");
+
     const btnCreate = document.getElementById("btnCreate");
     const createInfo = document.getElementById("createInfo");
 
-    const filterStatusEl = document.getElementById("filterStatus");
+    const fStatus = document.getElementById("fStatus");
+    const fSearch = document.getElementById("fSearch");
     const btnReload = document.getElementById("btnReload");
-    const listaEl = document.getElementById("lista");
+    const list = document.getElementById("list");
 
     let me = null;
+    let profile = null;
+    let vendedores = []; // [{id,nome}]
 
-    function optUser(p){
-      const shortId = String(p.id).slice(0, 8);
-      return `<option value="${p.id}">${p.nome || "Sem nome"} • ${p.papel} • ${shortId}</option>`;
-    }
+    btnLogout.onclick = logout;
 
-    function badge(status){
-      return `<span class="badge">${status}</span>`;
-    }
-
-    function itemHTML(d, vendedoresMap){
-      const vend = vendedoresMap.get(d.assigned_to);
-      const vendTxt = vend ? `${vend.nome} (${vend.papel})` : String(d.assigned_to).slice(0,8);
-
-      return `
-        <div class="item">
-          <div class="row">
-            <b>${d.nome_comercio}</b>
-            ${badge(d.status)}
-          </div>
-
-          <div class="muted">
-            Resp: <b>${vendTxt}</b><br>
-            ${d.segmento || "—"} • ${d.telefone || "—"}<br>
-            ${d.cidade ? (d.cidade + " / " + (d.uf||"")) : ""}
-          </div>
-
-          ${d.observacao ? `<div class="small" style="margin-top:8px">${d.observacao}</div>` : ""}
-
-          <div class="row" style="margin-top:10px; gap:10px; flex-wrap:wrap">
-            <button class="btn-ghost" data-act="copy" data-id="${d.id}">Copiar ID</button>
-
-            <select data-act="status" data-id="${d.id}">
-              <option value="pendente" ${d.status==="pendente"?"selected":""}>pendente</option>
-              <option value="aceita" ${d.status==="aceita"?"selected":""}>aceita</option>
-              <option value="concluida" ${d.status==="concluida"?"selected":""}>concluida</option>
-              <option value="cancelada" ${d.status==="cancelada"?"selected":""}>cancelada</option>
-            </select>
-          </div>
-
-          <div class="muted small" style="margin-top:8px">
-            Criada em: ${new Date(d.created_at).toLocaleString("pt-BR")}
-          </div>
-        </div>
-      `;
+    function cleanText(s){ return String(s||"").toLowerCase().trim(); }
+    function fmtDate(iso){
+      try{
+        const d = new Date(iso);
+        return d.toLocaleString("pt-BR");
+      }catch(e){ return ""; }
     }
 
     async function loadVendedores(){
-      // vendedores = profiles2.papel == 'vendedor'
       const { data, error } = await sb
         .from("profiles2")
         .select("id,nome,papel")
         .eq("papel", "vendedor")
         .order("nome", { ascending: true });
 
-      if (error) throw error;
-
-      const arr = data || [];
-      if(!arr.length){
-        assignedToEl.innerHTML = `<option value="">Nenhum vendedor cadastrado em profiles2</option>`;
-        return { list: [], map: new Map() };
-      }
-
-      assignedToEl.innerHTML = `<option value="">Selecione…</option>` + arr.map(optUser).join("");
-      return { list: arr, map: new Map(arr.map(x => [x.id, x])) };
-    }
-
-    async function createDemanda(){
-      createInfo.textContent = "";
-      const assigned_to = assignedToEl.value;
-      const nome_comercio = nomeComercioEl.value.trim();
-
-      if(!assigned_to){
-        toast("Escolhe o vendedor responsável 🙂");
-        return;
-      }
-      if(!nome_comercio){
-        toast("Nome do comércio é obrigatório 😅");
-        return;
-      }
-
-      btnCreate.disabled = true;
-
-      const payload = {
-        created_by: me.user.id,
-        assigned_to,
-        status: "pendente",
-        nome_comercio,
-        segmento: segmentoEl.value.trim() || null,
-        telefone: telefoneEl.value.trim() || null,
-        contato_nome: contatoNomeEl.value.trim() || null,
-        contato_email: contatoEmailEl.value.trim() || null,
-        uf: (ufEl.value.trim() || "").toUpperCase() || null,
-        cidade: cidadeEl.value.trim() || null,
-        observacao: observacaoEl.value.trim() || null
-      };
-
-      try{
-        const { error } = await sb.from("demandas_credenciamento").insert(payload);
-        if(error) throw error;
-
-        toast("Demanda criada ✅");
-        createInfo.textContent = "Demanda criada com sucesso. Ela vai aparecer nas pendências do vendedor.";
-
-        // limpa alguns campos
-        nomeComercioEl.value = "";
-        telefoneEl.value = "";
-        observacaoEl.value = "";
-
-        await loadLista(); // atualiza lista
-      } catch(err){
-        console.error(err);
-        toast("Erro ao criar demanda. Veja console (F12).");
-        createInfo.textContent = "Falha ao criar. Confere se seu usuário está como gestor/adm em profiles2.";
-      } finally {
-        btnCreate.disabled = false;
-      }
-    }
-
-    async function loadLista(){
-      listaEl.textContent = "Carregando…";
-
-      const statusFilter = filterStatusEl.value;
-
-      // puxa vendedores pra mapear nomes
-      const { list, map } = await loadVendedores();
-
-      let q = sb
-        .from("demandas_credenciamento")
-        .select("id,created_at,status,nome_comercio,segmento,telefone,observacao,uf,cidade,assigned_to")
-        .order("created_at", { ascending: false })
-        .limit(200);
-
-      if(statusFilter !== "todos"){
-        q = q.eq("status", statusFilter);
-      }
-
-      const { data, error } = await q;
       if(error) throw error;
 
-      const arr = data || [];
-      if(!arr.length){
-        listaEl.innerHTML = `<div class="muted"><i>Nenhuma demanda por aqui.</i></div>`;
+      vendedores = data || [];
+      assignedTo.innerHTML = "";
+
+      if(!vendedores.length){
+        assignedTo.innerHTML = `<option value="">(Nenhum vendedor cadastrado em profiles2)</option>`;
         return;
       }
 
-      listaEl.innerHTML = arr.map(d => itemHTML(d, map)).join("");
-
-      // events
-      listaEl.querySelectorAll("[data-act='copy']").forEach(btn => {
-        btn.addEventListener("click", async () => {
-          const id = btn.getAttribute("data-id");
-          try{
-            await navigator.clipboard.writeText(id);
-            toast("ID copiado ✅");
-          } catch {
-            toast("Não consegui copiar. Copia na mão 😅");
-          }
-        });
+      vendedores.forEach(v => {
+        const opt = document.createElement("option");
+        opt.value = v.id;
+        opt.textContent = v.nome || v.id;
+        assignedTo.appendChild(opt);
       });
+    }
 
-      listaEl.querySelectorAll("select[data-act='status']").forEach(sel => {
-        sel.addEventListener("change", async () => {
-          const id = sel.getAttribute("data-id");
-          const status = sel.value;
+    function vendedorNomeById(id){
+      const v = vendedores.find(x => x.id === id);
+      return v?.nome || id || "—";
+    }
 
-          try{
-            const { error } = await sb
-              .from("demandas_credenciamento")
-              .update({ status })
-              .eq("id", id);
+    function demandItemHTML(d){
+      const vend = vendedorNomeById(d.assigned_to);
 
-            if(error) throw error;
-            toast("Status atualizado ✅");
-          } catch(err){
-            console.error(err);
-            toast("Falha ao atualizar status (RLS?).");
+      return `
+        <div class="item">
+          <div class="row" style="justify-content:space-between;gap:10px">
+            <div>
+              <b>${d.nome_comercio}</b>
+              <div class="muted small">
+                ${d.segmento || "—"} • ${d.telefone || "—"} • ${d.cidade ? (d.cidade + " / " + (d.uf||"")) : "—"}
+              </div>
+            </div>
+
+            <span class="badge">${d.status}</span>
+          </div>
+
+          <div class="muted" style="margin-top:8px">
+            <b>Vendedor:</b> ${vend}
+            <span class="small">• criada em ${fmtDate(d.created_at)}</span>
+          </div>
+
+          ${d.observacao ? `<div class="small" style="margin-top:10px">${d.observacao}</div>` : ""}
+
+          <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <label class="small muted">Status:</label>
+            <select class="inp" style="width:auto" data-status="${d.id}">
+              <option value="pendente" ${d.status==="pendente"?"selected":""}>pendente</option>
+              <option value="aceita" ${d.status==="aceita"?"selected":""}>aceita</option>
+              <option value="concluida" ${d.status==="concluida"?"selected":""}>concluida</option>
+              <option value="cancelada" ${d.status==="cancelada"?"selected":""}>cancelada</option>
+            </select>
+
+            <button class="btn-ghost" data-save="${d.id}">Salvar</button>
+          </div>
+        </div>
+      `;
+    }
+
+    async function loadDemandas(){
+      list.textContent = "Carregando…";
+
+      const { data, error } = await sb
+        .from("demandas_credenciamento")
+        .select("id,assigned_to,status,nome_comercio,segmento,telefone,contato_nome,contato_email,uf,cidade,observacao,created_at")
+        .order("created_at", { ascending: false });
+
+      if(error) throw error;
+
+      let rows = data || [];
+
+      // filtro status
+      if(fStatus.value !== "all"){
+        rows = rows.filter(r => r.status === fStatus.value);
+      }
+
+      // filtro texto
+      const q = cleanText(fSearch.value);
+      if(q){
+        rows = rows.filter(r => {
+          const blob = [
+            r.nome_comercio, r.segmento, r.telefone, r.cidade, r.uf,
+            vendedorNomeById(r.assigned_to)
+          ].map(cleanText).join(" ");
+          return blob.includes(q);
+        });
+      }
+
+      if(!rows.length){
+        list.innerHTML = `<div class="muted"><i>Nenhuma demanda encontrada.</i></div>`;
+        return;
+      }
+
+      list.innerHTML = rows.map(demandItemHTML).join("");
+
+      // bind save status
+      list.querySelectorAll("[data-save]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-save");
+          const sel = list.querySelector(`[data-status="${id}"]`);
+          const newStatus = sel?.value;
+
+          if(!newStatus) return;
+
+          const { error: upErr } = await sb
+            .from("demandas_credenciamento")
+            .update({ status: newStatus })
+            .eq("id", id);
+
+          if(upErr){
+            console.error(upErr);
+            toast("Não consegui salvar. Ver console (F12).");
+            return;
           }
+
+          toast("Status atualizado ✅");
+          await loadDemandas();
         });
       });
     }
 
+    btnReload.addEventListener("click", loadDemandas);
+    fStatus.addEventListener("change", loadDemandas);
+    fSearch.addEventListener("input", () => {
+      clearTimeout(window.__fs);
+      window.__fs = setTimeout(loadDemandas, 250);
+    });
+
+    btnCreate.addEventListener("click", async () => {
+      createInfo.textContent = "";
+
+      const vendId = assignedTo.value;
+      const nome = nome_comercio.value.trim();
+
+      if(!vendId){
+        toast("Escolhe um vendedor primeiro 🙂");
+        return;
+      }
+      if(!nome){
+        toast("Preenche o nome do comércio 😉");
+        return;
+      }
+
+      const payload = {
+        created_by: me.id,
+        assigned_to: vendId,
+        nome_comercio: nome,
+        segmento: segmento.value.trim() || null,
+        telefone: telefone.value.trim() || null,
+        contato_nome: contato_nome.value.trim() || null,
+        contato_email: contato_email.value.trim() || null,
+        uf: (uf.value || "").trim().toUpperCase() || null,
+        cidade: cidade.value.trim() || null,
+        observacao: observacao.value.trim() || null,
+        status: "pendente"
+      };
+
+      createInfo.textContent = "Enviando…";
+
+      const { error } = await sb
+        .from("demandas_credenciamento")
+        .insert(payload);
+
+      if(error){
+        console.error(error);
+        createInfo.textContent = "";
+        toast("Erro ao criar demanda. Veja o console (F12).");
+        return;
+      }
+
+      toast("Demanda criada e enviada ✅");
+      createInfo.textContent = "✅ Enviada!";
+
+      // limpa campos (mantém vendedor)
+      nome_comercio.value = "";
+      segmento.value = "";
+      telefone.value = "";
+      contato_nome.value = "";
+      contato_email.value = "";
+      uf.value = "";
+      cidade.value = "";
+      observacao.value = "";
+
+      await loadDemandas();
+    });
+
+    // init
     try{
-      me = await getProfile();
+      const res = await getProfile();
+      me = res.user;
+      profile = res.profile;
 
-      whoEl.textContent = `${me.profile.nome || "Usuário"} • ${me.profile.papel || "?"}`;
+      who.textContent = `${profile.nome} • ${profile.papel}`;
 
-      if(!isAdminPapel(me.profile.papel)){
-        toast("Sem permissão: apenas gestor/adm.");
-        listaEl.innerHTML = `<div class="muted">Acesso negado.</div>`;
+      if(!isAdminPapel(profile.papel)){
+        toast("Acesso negado. Esta tela é só para gestor/adm.");
+        setTimeout(() => location.href = "dashboard.html", 900);
         throw new Error("not_admin");
       }
 
-      btnLogout.onclick = logout;
-
-      // carregar vendedores e lista
       await loadVendedores();
-      await loadLista();
+      await loadDemandas();
 
-      btnCreate.addEventListener("click", createDemanda);
-      btnReload.addEventListener("click", loadLista);
-      filterStatusEl.addEventListener("change", loadLista);
-
-    } catch(err){
+    }catch(err){
       console.error(err);
-      if(String(err?.message || "").includes("not_admin")) return;
-      toast("Erro ao carregar ADM. Veja o console (F12).");
+      if(String(err?.message||"") !== "not_admin"){
+        toast("Falha ao carregar ADM. Veja o console (F12).");
+      }
     }
   </script>
+
 </body>
 </html>
