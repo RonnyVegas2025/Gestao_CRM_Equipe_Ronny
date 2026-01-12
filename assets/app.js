@@ -4,10 +4,7 @@ const el = (id) => document.getElementById(id);
 
 export function toast(msg) {
   const t = el("toast");
-  if (!t) {
-    alert(msg);
-    return;
-  }
+  if (!t) return alert(msg);
   t.textContent = msg;
   t.style.display = "block";
   clearTimeout(window.__t);
@@ -17,7 +14,6 @@ export function toast(msg) {
 export async function requireAuth() {
   const { data, error } = await sb.auth.getSession();
   if (error) throw error;
-
   if (!data.session) {
     location.href = "index.html";
     return null;
@@ -25,56 +21,53 @@ export async function requireAuth() {
   return data.session.user;
 }
 
-export function isAdminPapel(papel) {
+export function isAdminRole(papel) {
   const p = String(papel || "").toLowerCase();
-  return ["gestor", "adm", "adm_comercial"].includes(p);
+  return ["gestor", "adm", "adm_comercial", "admin"].includes(p);
+}
+
+function normalizePapel(papel) {
+  const p = String(papel || "").toLowerCase();
+  if (["vendedor", "gestor", "adm", "adm_comercial", "admin"].includes(p)) return p;
+  return "vendedor";
 }
 
 /**
- * Busca o perfil do usuário em public.profiles2.
- * Se não existir, tenta criar com papel = 'vendedor' (ou metadata.role/papel).
+ * Garante perfil em public.profiles2
+ * columns: id, nome, papel
  */
-export async function getProfile() {
+export async function ensureProfile() {
   const user = await requireAuth();
   if (!user) return null;
 
   // 1) tenta ler
-  let { data: prof, error } = await sb
+  const { data: prof, error: selErr } = await sb
     .from("profiles2")
     .select("id,nome,papel")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (error) throw error;
-  if (prof) return { user, profile: prof };
+  if (!selErr && prof) return { user, profile: prof };
 
-  // 2) não achou -> tenta criar automático
+  // 2) cria automaticamente (se policy permitir)
   const nomeAuto =
     user.user_metadata?.nome ||
     user.user_metadata?.name ||
     user.email ||
     "Usuário";
 
-  const papelMeta =
-    user.user_metadata?.papel ||
-    user.user_metadata?.role ||
-    "vendedor";
-
-  const papelAuto = String(papelMeta).toLowerCase();
-  const papelFinal = ["vendedor", "gestor", "adm", "adm_comercial"].includes(papelAuto)
-    ? papelAuto
-    : "vendedor";
+  const papelAuto = normalizePapel(user.user_metadata?.papel || user.user_metadata?.role || "vendedor");
 
   const { error: insErr } = await sb.from("profiles2").insert({
     id: user.id,
     nome: nomeAuto,
-    papel: papelFinal
+    papel: papelAuto,
   });
 
   if (insErr) {
-    // aqui normalmente é RLS/policy do profiles2
-    console.error("INSERT PROFILE ERROR:", insErr);
-    toast("Não consegui criar seu perfil (profiles2). Verifique RLS/policies.");
+    // se não conseguiu criar, pelo menos mostra o erro real no console
+    console.error("ensureProfile insert error:", insErr);
+    toast("Sem perfil no profiles2 e não consegui criar. Verifique RLS/policies.");
     throw insErr;
   }
 
@@ -85,8 +78,17 @@ export async function getProfile() {
     .eq("id", user.id)
     .single();
 
-  if (selErr2) throw selErr2;
+  if (selErr2 || !prof2) {
+    console.error("ensureProfile readback error:", selErr2);
+    toast("Criei o perfil, mas não consegui ler de volta (RLS).");
+    throw selErr2 || new Error("profile_readback_failed");
+  }
+
   return { user, profile: prof2 };
+}
+
+export async function getProfile() {
+  return ensureProfile();
 }
 
 export async function logout() {
