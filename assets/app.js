@@ -28,8 +28,7 @@ export async function requireAuth() {
 
 /**
  * Lê o perfil do usuário em profiles2.
- * OBS: no seu banco tem coluna "e-mail" com hífen.
- * Pra evitar 400, NÃO vamos selecionar e-mail aqui.
+ * (Nesta base NÃO existe coluna email em profiles2)
  */
 export async function getProfile() {
   const user = await requireAuth();
@@ -49,7 +48,7 @@ export async function getProfile() {
   return { user, profile };
 }
 
-// compat: se algum arquivo chamar ensureProfile, funciona igual
+// compatibilidade com versões antigas
 export const ensureProfile = getProfile;
 
 /** ADM/Gestor? (baseado no profiles2.papel) */
