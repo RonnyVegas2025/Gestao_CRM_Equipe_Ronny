@@ -2,159 +2,35 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8">
-  <title>Central de Demandas • Credenciamento</title>
+  <title>Dashboard • Credenciamento</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="assets/app.css">
-
-  <style>
-    /* ajustes pontuais de layout (sem mexer no app.css) */
-    .grid-2{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:12px;
-    }
-    @media (max-width: 900px){
-      .grid-2{ grid-template-columns: 1fr; }
-    }
-    textarea.big{
-      min-height: 160px;
-      resize: vertical;
-      width: 100%;
-    }
-    .row-between{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .badge{
-      display:inline-block;
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: rgba(255,255,255,.08);
-      border: 1px solid rgba(255,255,255,.12);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: .02em;
-    }
-    .badge.pendente{ opacity:.95; }
-    .badge.aceita{ background: rgba(0,255,170,.10); border-color: rgba(0,255,170,.18); }
-    .badge.concluida{ background: rgba(70,130,255,.10); border-color: rgba(70,130,255,.18); }
-    .badge.cancelada{ background: rgba(255,80,80,.10); border-color: rgba(255,80,80,.18); }
-
-    .btn-small{
-      padding: 10px 12px;
-      border-radius: 12px;
-      font-weight: 600;
-      cursor:pointer;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.08);
-      color: #fff;
-    }
-    .btn-small:hover{ background: rgba(255,255,255,.10); }
-    .muted2{ opacity:.75; font-size: 13px; }
-  </style>
 </head>
 <body>
 
   <header class="top">
     <div>
-      <h1>Central de Demandas</h1>
+      <h1>Credenciamento • Dashboard</h1>
       <div class="muted" id="who">Carregando…</div>
     </div>
 
-    <div class="row-between">
-      <a class="btn-ghost" href="dashboard.html">Voltar</a>
-      <button id="btnLogout" class="btn-ghost">Sair</button>
-    </div>
+    <button id="btnLogout" class="btn-ghost">Sair</button>
   </header>
 
   <main class="wrap">
 
     <section class="card">
-      <h2>➕ Nova demanda</h2>
-
-      <div class="grid-2">
-        <div>
-          <label class="muted2">Vendedor responsável *</label>
-          <select id="seller" class="input">
-            <option value="">Carregando vendedores…</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="muted2">Nome do comércio *</label>
-          <input id="nome_comercio" class="input" placeholder="Ex: Padaria do Zé" />
-        </div>
-      </div>
-
-      <div class="grid-2" style="margin-top:12px">
-        <div>
-          <label class="muted2">Segmento</label>
-          <input id="segmento" class="input" placeholder="Ex: Padaria, Farmácia, Autopeças…" />
-        </div>
-
-        <div>
-          <label class="muted2">Telefone (Whats)</label>
-          <input id="telefone" class="input" placeholder="(19) 99999-9999" />
-        </div>
-      </div>
-
-      <div class="grid-2" style="margin-top:12px">
-        <div>
-          <label class="muted2">Contato (nome)</label>
-          <input id="contato_nome" class="input" placeholder="Ex: Maria" />
-        </div>
-
-        <div>
-          <label class="muted2">Contato (e-mail)</label>
-          <input id="contato_email" class="input" placeholder="ex: maria@empresa.com" />
-        </div>
-      </div>
-
-      <div class="grid-2" style="margin-top:12px">
-        <div>
-          <label class="muted2">UF</label>
-          <select id="uf" class="input">
-            <option value="">Selecione…</option>
-            <option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option>
-            <option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option>
-            <option>MT</option><option>MS</option><option>MG</option><option>PA</option><option>PB</option>
-            <option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option>
-            <option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option>
-            <option>SE</option><option>TO</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="muted2">Cidade</label>
-          <select id="cidade" class="input" disabled>
-            <option value="">Selecione a UF primeiro…</option>
-          </select>
-        </div>
-      </div>
-
-      <div style="margin-top:12px">
-        <label class="muted2">Observação / argumentos / instruções</label>
-        <textarea id="obs" class="input big" placeholder="Escreve aqui tudo que ajuda o vendedor: contexto, quem indicou, qual argumento usar, urgência, etc."></textarea>
-      </div>
-
-      <div style="margin-top:14px">
-        <button id="btnCreate" class="btn" style="width:100%">Enviar demanda</button>
-      </div>
-
-      <p class="muted2" style="margin-top:10px">
-        Dica: se o vendedor não aparecer na lista, ele precisa existir em <b>profiles2</b> com <b>papel = vendedor</b>.
-      </p>
+      <h2>📌 Pendências (Demandas)</h2>
+      <div id="demandas" class="list">Carregando…</div>
     </section>
 
     <section class="card">
-      <div class="row-between">
-        <h2>📌 Acompanhamento</h2>
-        <button id="btnReload" class="btn-small">Recarregar</button>
+      <h2>📋 Minhas negociações</h2>
+      <div class="row" style="justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div class="muted">Lista + botão de nova negociação.</div>
+        <a class="btn" href="negociacoes.html">+ Nova negociação</a>
       </div>
-      <div id="list" class="list">Carregando…</div>
+      <div id="negociacoes" class="list" style="margin-top:12px">Carregando…</div>
     </section>
 
   </main>
@@ -163,206 +39,96 @@
 
   <script type="module">
     import { sb } from "./assets/supabaseClient.js";
-    import { getProfile, logout, toast, isAdminRole } from "./assets/app.js";
+    import { getProfile, logout, toast } from "./assets/app.js";
 
-    const whoEl = document.getElementById("who");
-    const sellerSel = document.getElementById("seller");
+    const demandasEl = document.getElementById("demandas");
+    const negEl = document.getElementById("negociacoes");
 
-    const nomeEl = document.getElementById("nome_comercio");
-    const segEl  = document.getElementById("segmento");
-    const telEl  = document.getElementById("telefone");
-    const cNomeEl = document.getElementById("contato_nome");
-    const cMailEl = document.getElementById("contato_email");
-
-    const ufEl = document.getElementById("uf");
-    const cidadeEl = document.getElementById("cidade");
-    const obsEl = document.getElementById("obs");
-
-    const btnCreate = document.getElementById("btnCreate");
-    const btnReload = document.getElementById("btnReload");
-    const listEl = document.getElementById("list");
-
-    document.getElementById("btnLogout").onclick = logout;
-
-    function badgeClass(st){
-      const s = (st||"").toLowerCase();
-      return ["pendente","aceita","concluida","cancelada"].includes(s) ? s : "pendente";
+    function badge(status){
+      return `<span class="badge">${status}</span>`;
     }
 
-    function itemHTML(d){
-      const cidadeTxt = d.cidade ? `${d.cidade}${d.uf ? " / " + d.uf : ""}` : "—";
+    function demandaHTML(d){
       return `
         <div class="item">
-          <div class="row" style="justify-content:space-between;align-items:flex-start;gap:10px">
-            <div>
-              <b>${d.nome_comercio}</b>
-              <div class="muted2" style="margin-top:4px">
-                ${d.segmento || "—"} • ${d.telefone || "—"} • ${cidadeTxt}
-              </div>
-            </div>
-            <span class="badge ${badgeClass(d.status)}">${d.status}</span>
+          <div class="row">
+            <b>${d.nome_comercio}</b>
+            ${badge(d.status)}
           </div>
-
-          ${d.observacao ? `<div class="small" style="margin-top:10px;opacity:.9">${d.observacao}</div>` : ""}
-
-          <div class="muted2" style="margin-top:10px">
-            Criado em: ${new Date(d.created_at).toLocaleString("pt-BR")}
+          <div class="muted">
+            ${d.segmento || "—"} • ${d.telefone || "—"}<br>
+            ${d.cidade ? (d.cidade + " / " + (d.uf||"")) : ""}
+          </div>
+          ${d.observacao ? `<div class="small" style="margin-top:6px">${d.observacao}</div>` : ""}
+          <div style="margin-top:10px">
+            <button class="btn" disabled title="Vamos habilitar no próximo módulo">
+              Virar negociação (em breve)
+            </button>
           </div>
         </div>
       `;
     }
 
-    // Carrega vendedores por RPC (não depende de RLS da tabela)
-    async function loadSellers(){
-      const { data, error } = await sb.rpc("list_vendedores");
-      if (error) throw error;
-
-      if (!data || !data.length) {
-        sellerSel.innerHTML = `<option value="">(Nenhum vendedor cadastrado no profiles2)</option>`;
-        return;
-      }
-
-      sellerSel.innerHTML = `<option value="">Selecione…</option>` + data
-        .map(s => `<option value="${s.id}">${s.nome}</option>`)
-        .join("");
+    function negHTML(n){
+      return `
+        <div class="item">
+          <div class="row">
+            <b>${n.nome_fantasia || n.razao_social || "Negociação"}</b>
+            ${badge(n.status)}
+          </div>
+          <div class="muted">
+            ${n.cidade ? (n.cidade + " / " + (n.uf||"")) : ""} • ${n.segmento || "—"}
+          </div>
+          <div style="margin-top:10px">
+            <a class="btn" href="detalhe.html?id=${n.id}">Abrir</a>
+          </div>
+        </div>
+      `;
     }
 
-    // Cidades por UF (IBGE)
-    async function loadCities(uf){
-      cidadeEl.disabled = true;
-      cidadeEl.innerHTML = `<option value="">Carregando cidades…</option>`;
+    try {
+      const { user, profile } = await getProfile();
 
-      if(!uf){
-        cidadeEl.innerHTML = `<option value="">Selecione a UF primeiro…</option>`;
-        return;
-      }
+      document.getElementById("who").textContent =
+        `${user.email} • ${profile.papel || "vendedor"}`;
 
-      try{
-        const resp = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`);
-        const json = await resp.json();
+      document.getElementById("btnLogout").onclick = logout;
 
-        const opts = (json || [])
-          .map(m => m?.nome)
-          .filter(Boolean)
-          .sort((a,b) => a.localeCompare(b, "pt-BR"))
-          .map(nome => `<option value="${nome}">${nome}</option>`)
-          .join("");
-
-        cidadeEl.innerHTML = `<option value="">Selecione…</option>` + opts;
-        cidadeEl.disabled = false;
-      }catch(e){
-        console.error("IBGE ERROR:", e);
-        cidadeEl.innerHTML = `<option value="">Falha ao carregar cidades</option>`;
-      }
-    }
-
-    ufEl.addEventListener("change", () => loadCities(ufEl.value));
-
-    async function loadList(){
-      listEl.textContent = "Carregando…";
-
-      const { data, error } = await sb
+      // DEMANDAS pendentes do vendedor
+      const { data: dem, error: demErr } = await sb
         .from("demandas_credenciamento")
-        .select("id,nome_comercio,segmento,telefone,observacao,uf,cidade,status,created_at,assigned_to")
+        .select("id,nome_comercio,segmento,telefone,observacao,uf,cidade,status,created_at")
+        .eq("assigned_to", user.id)
+        .order("created_at", { ascending: true });
+
+      if (demErr) throw demErr;
+
+      const pendentes = (dem || []).filter(x => x.status === "pendente");
+
+      demandasEl.innerHTML = pendentes.length
+        ? pendentes.map(demandaHTML).join("")
+        : `<div class="muted"><i>Sem pendências 🎉</i></div>`;
+
+      // NEGOCIAÇÕES do vendedor
+      const { data: negs, error: negErr } = await sb
+        .from("negociacoes")
+        .select("id,status,segmento,uf,cidade,razao_social,nome_fantasia,created_at")
+        .eq("assigned_to", user.id)
         .order("created_at", { ascending: false })
-        .limit(100);
+        .limit(20);
 
-      if(error) throw error;
+      if (negErr) throw negErr;
 
-      if(!data || !data.length){
-        listEl.innerHTML = `<div class="muted"><i>Sem demandas ainda 🎉</i></div>`;
-        return;
-      }
+      negEl.innerHTML = (negs && negs.length)
+        ? negs.map(negHTML).join("")
+        : `<div class="muted"><i>Nenhuma negociação ainda.</i></div>`;
 
-      listEl.innerHTML = data.map(itemHTML).join("");
+    } catch (err) {
+      console.error(err);
+      toast("Erro ao carregar dashboard. Veja o console (F12).");
+      demandasEl.innerHTML = `<div class="muted">Falha ao carregar.</div>`;
+      negEl.innerHTML = `<div class="muted">Falha ao carregar.</div>`;
     }
-
-    btnReload.addEventListener("click", async () => {
-      try{ await loadList(); } catch(e){ console.error(e); toast("Falha ao carregar acompanhamento."); }
-    });
-
-    // Criar demanda
-    btnCreate.addEventListener("click", async () => {
-      const assigned_to = sellerSel.value;
-      const nome_comercio = nomeEl.value.trim();
-
-      if(!assigned_to){
-        toast("Escolhe o vendedor responsável 🙂");
-        return;
-      }
-      if(!nome_comercio){
-        toast("Coloca o nome do comércio 🙂");
-        return;
-      }
-
-      btnCreate.disabled = true;
-      btnCreate.textContent = "Enviando…";
-
-      try{
-        const payload = {
-          assigned_to,
-          nome_comercio,
-          segmento: segEl.value.trim() || null,
-          telefone: telEl.value.trim() || null,
-          contato_nome: cNomeEl.value.trim() || null,
-          contato_email: cMailEl.value.trim() || null,
-          uf: ufEl.value || null,
-          cidade: cidadeEl.value || null,
-          observacao: obsEl.value.trim() || null,
-          status: "pendente"
-        };
-
-        const { error } = await sb.from("demandas_credenciamento").insert(payload);
-        if(error) throw error;
-
-        toast("Demanda criada ✅");
-
-        // limpa
-        nomeEl.value = "";
-        segEl.value = "";
-        telEl.value = "";
-        cNomeEl.value = "";
-        cMailEl.value = "";
-        ufEl.value = "";
-        cidadeEl.innerHTML = `<option value="">Selecione a UF primeiro…</option>`;
-        cidadeEl.disabled = true;
-        obsEl.value = "";
-
-        await loadList();
-
-      } catch(e){
-        console.error("CREATE DEMANDA ERROR:", e);
-        toast("Não consegui criar a demanda. Veja o console (F12).");
-      } finally {
-        btnCreate.disabled = false;
-        btnCreate.textContent = "Enviar demanda";
-      }
-    });
-
-    // boot
-    (async () => {
-      try{
-        const { profile } = await getProfile();
-
-        whoEl.textContent = `${profile.nome} • ${profile.papel || profile.role || ""}`.trim();
-
-        const role = (profile.papel || profile.role || "").toLowerCase();
-        if(!isAdminRole(role)){
-          toast("Seu usuário não tem permissão de ADM/Gestor.");
-          // opcional: redireciona
-          // location.href = "dashboard.html";
-          return;
-        }
-
-        await loadSellers();
-        await loadList();
-
-      } catch(e){
-        console.error("ADM DEMANDAS INIT ERROR:", e);
-        toast("Erro ao carregar. Veja o console (F12).");
-        listEl.innerHTML = `<div class="muted">Falha ao carregar.</div>`;
-      }
-    })();
   </script>
 </body>
 </html>
